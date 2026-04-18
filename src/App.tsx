@@ -99,9 +99,13 @@ export default function App() {
   }
 
   if (screen === "setup") {
+    const wasConfigured = isConfigured();
     return (
       <div className="app">
-        <SetupScreen onSave={() => setScreen("search")} />
+        <SetupScreen
+          onSave={() => setScreen("search")}
+          onBack={wasConfigured ? () => setScreen("search") : undefined}
+        />
       </div>
     );
   }
@@ -114,6 +118,7 @@ export default function App() {
           onGroupedSearch={handleGroupedSearch}
           onChannelSearch={handleChannelSearch}
           onSubscriptions={() => setScreen("subscriptions")}
+          onSettings={() => setScreen("setup")}
           todaySeconds={todaySeconds}
           weekSeconds={weekSeconds}
         />

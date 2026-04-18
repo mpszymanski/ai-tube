@@ -3,9 +3,10 @@ import { getConfig, saveConfig } from "../services/config";
 
 interface SetupScreenProps {
   onSave(): void;
+  onBack?(): void;
 }
 
-export default function SetupScreen({ onSave }: SetupScreenProps) {
+export default function SetupScreen({ onSave, onBack }: SetupScreenProps) {
   const config = getConfig();
   const [apiKey, setApiKey] = useState(config.youtubeApiKey);
   const [lmUrl, setLmUrl] = useState(config.lmStudioUrl);
@@ -116,25 +117,49 @@ export default function SetupScreen({ onSave }: SetupScreenProps) {
           </div>
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={!canSave}
-          style={{
-            padding: "11px 20px",
-            background: canSave ? "var(--accent)" : "var(--border-strong)",
-            color: canSave ? "#fff" : "var(--text-mute)",
-            border: "none",
-            borderRadius: "var(--radius)",
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: canSave ? "pointer" : "not-allowed",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => { if (canSave) e.currentTarget.style.background = "var(--accent-dim)"; }}
-          onMouseLeave={(e) => { if (canSave) e.currentTarget.style.background = "var(--accent)"; }}
-        >
-          Save &amp; Continue
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {onBack && (
+            <button
+              onClick={onBack}
+              style={{
+                flex: 1,
+                padding: "11px 20px",
+                background: "transparent",
+                color: "var(--text-dim)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "background 0.15s, color 0.15s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-elev)"; e.currentTarget.style.color = "var(--text)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-dim)"; }}
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={!canSave}
+            style={{
+              flex: 1,
+              padding: "11px 20px",
+              background: canSave ? "var(--accent)" : "var(--border-strong)",
+              color: canSave ? "#fff" : "var(--text-mute)",
+              border: "none",
+              borderRadius: "var(--radius)",
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: canSave ? "pointer" : "not-allowed",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => { if (canSave) e.currentTarget.style.background = "var(--accent-dim)"; }}
+            onMouseLeave={(e) => { if (canSave) e.currentTarget.style.background = "var(--accent)"; }}
+          >
+            Save &amp; Continue
+          </button>
+        </div>
       </div>
     </div>
   );

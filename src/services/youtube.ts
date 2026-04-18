@@ -1,4 +1,5 @@
 import { VideoResult, ChannelResult } from "../types";
+import { recordUnits } from "./apiUsage";
 
 function decodeHtmlEntities(text: string): string {
   return text
@@ -20,6 +21,7 @@ async function fetchVideoDetails(
 
   const res = await fetch(url.toString());
   if (!res.ok) return new Map();
+  recordUnits(1);
 
   const data = await res.json();
   const map = new Map<string, { duration: string; viewCount: string; channelTitle: string; publishedAt: string }>();
@@ -43,6 +45,7 @@ async function fetchChannelThumbnails(channelIds: string[], apiKey: string): Pro
 
   const res = await fetch(url.toString());
   if (!res.ok) return new Map();
+  recordUnits(1);
 
   const data = await res.json();
   const map = new Map<string, string>();
@@ -67,6 +70,7 @@ export async function searchChannels(name: string, apiKey: string): Promise<Chan
 
   const res = await fetch(url.toString());
   if (!res.ok) return [];
+  recordUnits(100);
 
   const data = await res.json();
   return (data.items ?? []).map((item: any): ChannelResult => ({
@@ -99,6 +103,7 @@ export async function getChannelLatestVideos(
   if (!res.ok) {
     throw new Error(`YouTube API error: ${res.status} ${res.statusText}`);
   }
+  recordUnits(100);
 
   const data = await res.json();
   const items: any[] = data.items ?? [];
@@ -166,6 +171,7 @@ export async function searchYouTube(query: string, apiKey: string, channelId?: s
   if (!res.ok) {
     throw new Error(`YouTube API error: ${res.status} ${res.statusText}`);
   }
+  recordUnits(100);
 
   const data = await res.json();
   const items: any[] = data.items ?? [];
