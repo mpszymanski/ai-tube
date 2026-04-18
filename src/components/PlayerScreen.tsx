@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { VideoResult, ChannelResult } from "../types";
+import { useEffect, useRef } from "react";
+import { VideoResult } from "../types";
 import { addSeconds } from "../services/watchTime";
-import { isSubscribed, subscribe, unsubscribe } from "../services/subscriptions";
 import WatchTimeCounter from "./WatchTimeCounter";
+import BackButton from "./BackButton";
+import SubscribeButton from "./SubscribeButton";
+import { formatViewCount, formatPublishedAt } from "../utils/formatters";
 
 declare global {
   interface Window {
@@ -18,39 +20,6 @@ interface PlayerScreenProps {
   onBack(): void;
 }
 
-function ArrowIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function formatPublishedAt(iso: string): string {
-  if (!iso) return "";
-  const published = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - published.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays < 1) return "today";
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 5) return `${diffWeeks} week${diffWeeks > 1 ? "s" : ""} ago`;
-  const diffMonths = Math.floor(diffDays / 30);
-  if (diffMonths < 12) return `${diffMonths} month${diffMonths > 1 ? "s" : ""} ago`;
-  const diffYears = Math.floor(diffDays / 365);
-  return `${diffYears} year${diffYears > 1 ? "s" : ""} ago`;
-}
-
-function formatViewCount(raw: string): string {
-  if (!raw) return "";
-  const n = parseInt(raw);
-  if (isNaN(n)) return "";
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B views`;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M views`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K views`;
-  return `${n} views`;
-}
 
 export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack }: PlayerScreenProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -109,55 +78,12 @@ export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack 
     };
   }, [video.videoId]);
 
-  const backBtnStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    background: "transparent",
-    border: "none",
-    color: "var(--text-dim)",
-    fontSize: 13,
-    padding: "8px 12px 8px 8px",
-    borderRadius: "var(--radius-sm)",
-    cursor: "pointer",
-    transition: "color 0.15s, background 0.15s",
-  };
-
-  const [subscribed, setSubscribed] = useState(() =>
-    video.channelId ? isSubscribed(video.channelId) : false
-  );
-
-  function handleSubscribe() {
-    if (!video.channelId) return;
-    const channel: ChannelResult = {
-      channelId: video.channelId,
-      title: video.channelTitle,
-      thumbnailUrl: video.channelThumbnailUrl ?? "",
-      description: "",
-    };
-    if (subscribed) {
-      unsubscribe(video.channelId);
-      setSubscribed(false);
-    } else {
-      subscribe(channel);
-      setSubscribed(true);
-    }
-  }
-
   const metaParts = [formatViewCount(video.viewCount), formatPublishedAt(video.publishedAt)].filter(Boolean);
 
   return (
     <div className="app">
       <div className="app__topbar">
-        <button
-          onClick={onBack}
-          style={backBtnStyle}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-elev)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "transparent"; }}
-        >
-          <ArrowIcon />
-          Back
-        </button>
+        <BackButton onBack={onBack} />
         <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
       </div>
 
@@ -215,35 +141,14 @@ export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack 
                 </div>
               </div>
               {video.channelId && (
-                <button
-                  onClick={handleSubscribe}
-                  style={{
-                    flexShrink: 0,
-                    background: subscribed ? "transparent" : "var(--accent)",
-                    border: subscribed ? "1px solid var(--border-strong)" : "1px solid transparent",
-                    borderRadius: "var(--radius-sm)",
-                    color: subscribed ? "var(--text-dim)" : "#fff",
-                    fontSize: 12,
-                    fontFamily: "var(--font-mono)",
-                    padding: "6px 14px",
-                    cursor: "pointer",
-                    transition: "background 0.15s, color 0.15s, border-color 0.15s",
+                <SubscribeButton
+                  channel={{
+                    channelId: video.channelId,
+                    title: video.channelTitle,
+                    thumbnailUrl: video.channelThumbnailUrl ?? "",
+                    description: "",
                   }}
-                  onMouseEnter={(e) => {
-                    if (subscribed) {
-                      e.currentTarget.style.borderColor = "var(--accent)";
-                      e.currentTarget.style.color = "var(--accent)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (subscribed) {
-                      e.currentTarget.style.borderColor = "var(--border-strong)";
-                      e.currentTarget.style.color = "var(--text-dim)";
-                    }
-                  }}
-                >
-                  {subscribed ? "Subscribed" : "Subscribe"}
-                </button>
+                />
               )}
             </div>
           </div>

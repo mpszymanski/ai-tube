@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { ChannelResultWithVideos } from "../types";
-import { isSubscribed, subscribe, unsubscribe } from "../services/subscriptions";
 import ResultCard from "./ResultCard";
 import WatchTimeCounter from "./WatchTimeCounter";
 import Toggle from "./Toggle";
+import BackButton from "./BackButton";
+import SubscribeButton from "./SubscribeButton";
+import { ANIMATION_DELAYS } from "../utils/constants";
 
 interface ChannelResultsScreenProps {
   data: ChannelResultWithVideos;
@@ -14,58 +16,16 @@ interface ChannelResultsScreenProps {
   onBack(): void;
 }
 
-function ArrowIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-const delays = ["0.05s", "0.10s", "0.15s", "0.20s", "0.25s", "0.30s", "0.35s", "0.40s", "0.45s", "0.50s"];
 
 export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, onSelect, onBack }: ChannelResultsScreenProps) {
   const [filterOn, setFilterOn] = useState(true);
-  const [subscribed, setSubscribed] = useState(() => isSubscribed(data.channel.channelId));
   const { channel, latestVideos } = data;
   const visibleVideos = filterOn ? latestVideos.filter((r) => !r.isClickbait) : latestVideos;
-
-  function handleSubscribe() {
-    if (subscribed) {
-      unsubscribe(channel.channelId);
-      setSubscribed(false);
-    } else {
-      subscribe(channel);
-      setSubscribed(true);
-    }
-  }
-
-  const backBtnStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    background: "transparent",
-    border: "none",
-    color: "var(--text-dim)",
-    fontSize: 13,
-    padding: "8px 12px 8px 8px",
-    borderRadius: "var(--radius-sm)",
-    cursor: "pointer",
-    transition: "color 0.15s, background 0.15s",
-  };
 
   return (
     <div className="app">
       <div className="app__topbar">
-        <button
-          onClick={onBack}
-          style={backBtnStyle}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-elev)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "transparent"; }}
-        >
-          <ArrowIcon />
-          Back
-        </button>
+        <BackButton onBack={onBack} />
         <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
       </div>
 
@@ -111,35 +71,7 @@ export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, 
                 </span>
               )}
             </div>
-            <button
-              onClick={handleSubscribe}
-              style={{
-                flexShrink: 0,
-                background: subscribed ? "transparent" : "var(--accent)",
-                border: subscribed ? "1px solid var(--border-strong)" : "1px solid transparent",
-                borderRadius: "var(--radius-sm)",
-                color: subscribed ? "var(--text-dim)" : "#fff",
-                fontSize: 12,
-                fontFamily: "var(--font-mono)",
-                padding: "6px 14px",
-                cursor: "pointer",
-                transition: "background 0.15s, color 0.15s, border-color 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                if (subscribed) {
-                  e.currentTarget.style.borderColor = "var(--accent)";
-                  e.currentTarget.style.color = "var(--accent)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (subscribed) {
-                  e.currentTarget.style.borderColor = "var(--border-strong)";
-                  e.currentTarget.style.color = "var(--text-dim)";
-                }
-              }}
-            >
-              {subscribed ? "Subscribed" : "Subscribe"}
-            </button>
+            <SubscribeButton channel={channel} />
           </div>
 
           {/* Videos header */}
@@ -165,7 +97,7 @@ export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, 
                 key={video.videoId}
                 video={video}
                 onClick={() => onSelect(video.videoId)}
-                animationDelay={delays[i] ?? "0.05s"}
+                animationDelay={ANIMATION_DELAYS[i] ?? "0.05s"}
               />
             ))
           )}

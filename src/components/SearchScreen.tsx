@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { VideoResult, ChannelResult, ChannelResultWithVideos } from "../types";
+import BackButton from "./BackButton";
+import SubscribeButton from "./SubscribeButton";
 import { getConfig } from "../services/config";
 import { analyzeQuery, classifyClickbait } from "../services/lmStudio";
 import { searchYouTube, searchChannels, getChannelLatestVideos } from "../services/youtube";
-import { isSubscribed, subscribe, unsubscribe } from "../services/subscriptions";
 import Logo from "./Logo";
 import WatchTimeCounter from "./WatchTimeCounter";
 
@@ -60,52 +61,6 @@ function SubscriptionsIcon() {
   );
 }
 
-function ChannelSubscribeButton({ channel }: { channel: ChannelResult }) {
-  const [subscribed, setSubscribed] = useState(() => isSubscribed(channel.channelId));
-
-  function handleClick(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (subscribed) {
-      unsubscribe(channel.channelId);
-      setSubscribed(false);
-    } else {
-      subscribe(channel);
-      setSubscribed(true);
-    }
-  }
-
-  return (
-    <button
-      onClick={handleClick}
-      style={{
-        flexShrink: 0,
-        background: subscribed ? "transparent" : "var(--accent)",
-        border: subscribed ? "1px solid var(--border-strong)" : "1px solid transparent",
-        borderRadius: "var(--radius-sm)",
-        color: subscribed ? "var(--text-dim)" : "#fff",
-        fontSize: 11,
-        fontFamily: "var(--font-mono)",
-        padding: "4px 10px",
-        cursor: "pointer",
-        transition: "background 0.15s, color 0.15s, border-color 0.15s",
-      }}
-      onMouseEnter={(e) => {
-        if (subscribed) {
-          e.currentTarget.style.borderColor = "var(--accent)";
-          e.currentTarget.style.color = "var(--accent)";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (subscribed) {
-          e.currentTarget.style.borderColor = "var(--border-strong)";
-          e.currentTarget.style.color = "var(--text-dim)";
-        }
-      }}
-    >
-      {subscribed ? "Subscribed" : "Subscribe"}
-    </button>
-  );
-}
 
 export default function SearchScreen({ onSearch, onChannelSearch, onSubscriptions, todaySeconds, weekSeconds }: SearchScreenProps) {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -407,17 +362,7 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
   if (phase === "channel-confirm") {
     const confirmTopbar = (
       <div className="app__topbar" style={{ justifyContent: "space-between" }}>
-        <button
-          onClick={() => setPhase("idle")}
-          style={subsBtnStyle}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-elev)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "transparent"; }}
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Back
-        </button>
+        <BackButton onBack={() => setPhase("idle")} />
         <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
       </div>
     );
@@ -480,7 +425,7 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
                         </span>
                       )}
                     </div>
-                    <ChannelSubscribeButton channel={ch} />
+                    <SubscribeButton channel={ch} size="sm" />
                   </button>
                 ))}
               </div>
