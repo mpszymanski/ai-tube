@@ -6,6 +6,7 @@ export interface VideoResult {
   publishedAt: string;
   duration: string;
   viewCount: string;
+  isClickbait?: boolean;
 }
 
 export interface WatchTimeData {

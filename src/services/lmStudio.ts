@@ -43,6 +43,14 @@ export async function analyzeQuery(
 }
 
 export async function filterClickbait(titles: string[], apiUrl: string): Promise<string[]> {
+  const classified = await classifyClickbait(titles, apiUrl);
+  return classified.filter((item) => !item.clickbait).map((item) => item.title);
+}
+
+export async function classifyClickbait(
+  titles: string[],
+  apiUrl: string,
+): Promise<{ title: string; clickbait: boolean }[]> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
@@ -68,8 +76,8 @@ export async function filterClickbait(titles: string[], apiUrl: string): Promise
     const data = await res.json();
     const raw = data.choices[0].message.content.trim();
     const parsed: { title: string; clickbait: boolean }[] = JSON.parse(raw);
-    return parsed.filter((item) => !item.clickbait).map((item) => item.title);
+    return parsed;
   } catch {
-    return titles;
+    return titles.map((title) => ({ title, clickbait: false }));
   }
 }

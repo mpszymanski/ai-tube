@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { VideoResult } from "../types";
 import ResultCard from "./ResultCard";
 import WatchTimeCounter from "./WatchTimeCounter";
+import Toggle from "./Toggle";
 
 interface ResultsListProps {
   results: VideoResult[];
@@ -29,9 +31,12 @@ function EmptyBoxIcon() {
   );
 }
 
-const delays = ["0.05s", "0.12s", "0.19s"];
+const delays = ["0.05s", "0.10s", "0.15s", "0.20s", "0.25s", "0.30s", "0.35s", "0.40s", "0.45s", "0.50s"];
 
 export default function ResultsList({ results, query, todaySeconds, weekSeconds, onSelect, onBack }: ResultsListProps) {
+  const [filterOn, setFilterOn] = useState(true);
+  const visibleResults = filterOn ? results.filter((r) => !r.isClickbait) : results;
+
   const backBtnStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -68,9 +73,7 @@ export default function ResultsList({ results, query, todaySeconds, weekSeconds,
             <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--text-dim)" }}>
               Results for "<span style={{ color: "var(--text)" }}>{query}</span>"
             </span>
-            <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--text-mute)" }}>
-              {results.length} picks · clickbait filtered
-            </span>
+            <Toggle checked={filterOn} onChange={setFilterOn} label="Clickbait filter" />
           </div>
 
           {results.length === 0 ? (
@@ -90,9 +93,9 @@ export default function ResultsList({ results, query, todaySeconds, weekSeconds,
               >
                 <EmptyBoxIcon />
               </div>
-              <p style={{ fontSize: 17, fontWeight: 500, color: "var(--text)" }}>Nothing clean to show</p>
+              <p style={{ fontSize: 17, fontWeight: 500, color: "var(--text)" }}>No results found</p>
               <p style={{ fontSize: 13.5, color: "var(--text-dim)", textAlign: "center" }}>
-                All results were filtered as clickbait. Try a more specific query.
+                Try a different search query.
               </p>
               <button
                 onClick={onBack}
@@ -110,8 +113,30 @@ export default function ResultsList({ results, query, todaySeconds, weekSeconds,
                 Try another query
               </button>
             </div>
+          ) : visibleResults.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, paddingTop: 40 }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  background: "var(--bg-elev)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--text-dim)",
+                }}
+              >
+                <EmptyBoxIcon />
+              </div>
+              <p style={{ fontSize: 17, fontWeight: 500, color: "var(--text)" }}>All results are clickbait</p>
+              <p style={{ fontSize: 13.5, color: "var(--text-dim)", textAlign: "center" }}>
+                All results were marked as clickbait. Turn off the filter to see them.
+              </p>
+            </div>
           ) : (
-            results.map((video, i) => (
+            visibleResults.map((video, i) => (
               <ResultCard
                 key={video.videoId}
                 video={video}

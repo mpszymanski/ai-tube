@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { VideoResult, ChannelResult } from "../types";
 import { getConfig } from "../services/config";
-import { analyzeQuery, filterClickbait } from "../services/lmStudio";
+import { analyzeQuery, classifyClickbait } from "../services/lmStudio";
 import { searchYouTube, searchChannels } from "../services/youtube";
 import Logo from "./Logo";
 import WatchTimeCounter from "./WatchTimeCounter";
@@ -100,12 +100,12 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
     try {
       const allResults = await searchYouTube(videoQuery, config.youtubeApiKey, channelId);
       const titles = allResults.map((r) => r.title);
-      const cleanTitles = await filterClickbait(titles, config.lmStudioUrl);
-      const cleanSet = new Set(cleanTitles);
+      const classified = await classifyClickbait(titles, config.lmStudioUrl);
+      const clickbaitMap = new Map(classified.map((item) => [item.title, item.clickbait]));
       results = allResults
-        .filter((r) => cleanSet.has(r.title))
+        .map((r) => ({ ...r, isClickbait: clickbaitMap.get(r.title) ?? false }))
         .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-        .slice(0, 5);
+        .slice(0, 10);
 
       if (results.length === 0) {
         const delay = Math.max(0, 1200 - (Date.now() - searchStart));
@@ -424,9 +424,6 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
           {error && (
             <p style={{ color: "var(--accent)", fontSize: 13, marginTop: 12, textAlign: "center" }}>{error}</p>
           )}
-          <p style={{ marginTop: 14, fontSize: 12, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>
-            AI rephrases your query · filters clickbait · max 5 results
-          </p>
         </div>
       </div>
     </>
