@@ -1,7 +1,7 @@
 # AI Tube — Progress Tracker
 
 **Started:** 2026-04-18  
-**Last updated:** 2026-04-18 (Tasks 1–5 complete)
+**Last updated:** 2026-04-18 (Tasks 6–13 complete — Phase 2 done)
 
 ---
 
@@ -10,19 +10,19 @@
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | 0 | Project Scaffolding | ✅ Done | App builds and runs; first build compiled 391 Rust crates |
-| 1 | Type Definitions | ✅ Done | |
+| 1 | Type Definitions | ✅ Done | Extended with channelTitle, publishedAt, duration, viewCount — see deviation below |
 | 2 | LM Studio Service | ✅ Done | 15s AbortController timeout included |
-| 3 | YouTube Service | ✅ Done | HTML entity decoding included |
+| 3 | YouTube Service | ✅ Done | HTML entity decoding included; batch /videos details fetch added |
 | 4 | Watch Time Service | ✅ Done | |
 | 5 | Config Service | ✅ Done | |
-| 6 | Setup Screen | ⬜ Not started | |
-| 7 | Watch Time Counter | ⬜ Not started | |
-| 8 | Search Screen | ⬜ Not started | |
-| 9 | Result Card | ⬜ Not started | |
-| 10 | Results List | ⬜ Not started | |
-| 11 | Player Screen | ⬜ Not started | |
-| 12 | App Shell & Navigation | ⬜ Not started | |
-| 13 | Global Styling | ⬜ Not started | |
+| 6 | Setup Screen | ✅ Done | Centered card; key ≥ 20 chars validation; error state on blur |
+| 7 | Watch Time Counter | ✅ Done | Pill badge; props are todaySeconds/weekSeconds (not minutes) — see deviation |
+| 8 | Search Screen | ✅ Done | Thinking rows with typewriter; 2200ms navigate; full pipeline |
+| 9 | Result Card | ✅ Done | Duration badge, channel/views/posted meta, staggered rowIn animation |
+| 10 | Results List | ✅ Done | Empty state; back button; WatchTimeCounter in topbar |
+| 11 | Player Screen | ✅ Done | YT IFrame API; watch time tracking; cleanup on unmount |
+| 12 | App Shell & Navigation | ✅ Done | State machine in App.tsx; 5s watch time polling |
+| 13 | Global Styling | ✅ Done | CSS custom properties; keyframes; app chrome classes |
 | 14 | Error Boundary & Edge Cases | ⬜ Not started | |
 | 15 | Build & Test | ⬜ Not started | |
 
@@ -42,7 +42,10 @@
 
 | Decision | Reason |
 |----------|--------|
-| | |
+| `VideoResult` extended with `channelTitle`, `publishedAt`, `duration`, `viewCount`; `searchYouTube` makes a second batch `/videos?part=contentDetails,statistics,snippet` call | Card spec shows duration badge + channel/views/posted meta; these fields are absent from search snippet alone |
+| `WatchTimeCounter` props renamed from `todayMins`/`weekMins` to `todaySeconds`/`weekSeconds` | `getTodaySeconds()` and `getWeekSeconds()` return seconds; passing seconds directly avoids lossy conversion and reuses `formatTime()` directly |
+| Logo implemented as its own component `Logo.tsx` (no separate task in spec) | Needed by SearchScreen (xl size); cleaner than inlining the SVG markup |
+| `src/App.css` deleted; replaced by `src/styles/global.css` | Boilerplate CSS conflicts with design tokens |
 
 ---
 

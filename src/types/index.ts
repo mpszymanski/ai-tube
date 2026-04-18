@@ -2,6 +2,10 @@ export interface VideoResult {
   videoId: string;
   title: string;
   thumbnailUrl: string;
+  channelTitle: string;
+  publishedAt: string;
+  duration: string;
+  viewCount: string;
 }
 
 export interface WatchTimeData {
