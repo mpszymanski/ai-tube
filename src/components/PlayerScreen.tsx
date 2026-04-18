@@ -22,7 +22,7 @@ interface PlayerScreenProps {
 
 
 export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack }: PlayerScreenProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const playerDivRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -34,15 +34,11 @@ export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack 
   }
 
   function initPlayer() {
-    if (!iframeRef.current) return;
-    playerRef.current = new window.YT.Player(iframeRef.current, {
+    if (!playerDivRef.current) return;
+    playerRef.current = new window.YT.Player(playerDivRef.current, {
+      videoId: video.videoId,
+      playerVars: { autoplay: 1, enablejsapi: 1 },
       events: {
-        onReady: (event: any) => {
-          if (event.target.getPlayerState() === window.YT.PlayerState.PLAYING) {
-            clearWatchInterval();
-            intervalRef.current = setInterval(() => addSeconds(1), 1000);
-          }
-        },
         onStateChange: (event: any) => {
           const state = event.data;
           if (state === window.YT.PlayerState.PLAYING) {
@@ -99,14 +95,7 @@ export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack 
               overflow: "hidden",
             }}
           >
-            <iframe
-              ref={iframeRef}
-              src={`https://www.youtube.com/embed/${video.videoId}?enablejsapi=1&autoplay=1`}
-              allow="autoplay; encrypted-media; picture-in-picture"
-              allowFullScreen
-              style={{ width: "100%", height: "100%", border: "none", display: "block" }}
-              title={video.title}
-            />
+            <div ref={playerDivRef} style={{ width: "100%", height: "100%" }} />
           </div>
 
           <div>
