@@ -6,7 +6,9 @@
       "Bash(npm install *)",
       "Bash(npm run *)",
       "Bash(cmd.exe /c \"where cargo\")",
-      "Bash(cmd.exe /c \"cargo --version\")"
+      "Bash(cmd.exe /c \"cargo --version\")",
+      "Bash(npx tsc *)",
+      "Bash(where cargo *)"
     ]
   }
 }

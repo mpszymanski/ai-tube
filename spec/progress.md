@@ -1,7 +1,7 @@
 # AI Tube — Progress Tracker
 
 **Started:** 2026-04-18  
-**Last updated:** 2026-04-18 (Tasks 6–13 complete — Phase 2 done)
+**Last updated:** 2026-04-18 (All tasks complete — Tasks 14 & 15 done)
 
 ---
 
@@ -23,8 +23,8 @@
 | 11 | Player Screen | ✅ Done | YT IFrame API; watch time tracking; cleanup on unmount |
 | 12 | App Shell & Navigation | ✅ Done | State machine in App.tsx; 5s watch time polling |
 | 13 | Global Styling | ✅ Done | CSS custom properties; keyframes; app chrome classes |
-| 14 | Error Boundary & Edge Cases | ⬜ Not started | |
-| 15 | Build & Test | ⬜ Not started | |
+| 14 | Error Boundary & Edge Cases | ✅ Done | All 5 items already implemented in earlier tasks |
+| 15 | Build & Test | ✅ Done | .msi + .exe produced in src-tauri/target/release/bundle/; TypeScript clean; no React warnings |
 
 **Status key:** ⬜ Not started · 🔄 In progress · ✅ Done · ⚠️ Blocked · 🐛 Has bugs
 
