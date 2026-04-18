@@ -1,4 +1,4 @@
-import { VideoResult } from "../types";
+import { VideoResult, ChannelResult } from "../types";
 
 function decodeHtmlEntities(text: string): string {
   return text
@@ -34,12 +34,38 @@ async function fetchVideoDetails(
   return map;
 }
 
-export async function searchYouTube(query: string, apiKey: string): Promise<VideoResult[]> {
+export async function searchChannels(name: string, apiKey: string): Promise<ChannelResult[]> {
+  const url = new URL("https://www.googleapis.com/youtube/v3/search");
+  url.searchParams.set("part", "snippet");
+  url.searchParams.set("q", name);
+  url.searchParams.set("type", "channel");
+  url.searchParams.set("maxResults", "5");
+  url.searchParams.set("key", apiKey);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) return [];
+
+  const data = await res.json();
+  return (data.items ?? []).map((item: any): ChannelResult => ({
+    channelId: item.id.channelId,
+    title: item.snippet.title,
+    description: item.snippet.description ?? "",
+    thumbnailUrl: (
+      item.snippet.thumbnails?.medium?.url ??
+      item.snippet.thumbnails?.default?.url ??
+      item.snippet.thumbnails?.high?.url ??
+      ""
+    ).replace(/^\/\//, "https://"),
+  }));
+}
+
+export async function searchYouTube(query: string, apiKey: string, channelId?: string): Promise<VideoResult[]> {
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.searchParams.set("part", "snippet");
   url.searchParams.set("q", query);
   url.searchParams.set("type", "video");
   url.searchParams.set("maxResults", "10");
+  if (channelId) url.searchParams.set("channelId", channelId);
   url.searchParams.set("key", apiKey);
 
   const res = await fetch(url.toString());

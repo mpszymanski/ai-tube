@@ -18,3 +18,10 @@ export interface AppConfig {
 }
 
 export type AppScreen = "setup" | "search" | "results" | "player";
+
+export interface ChannelResult {
+  channelId: string;
+  title: string;
+  thumbnailUrl: string;
+  description: string;
+}

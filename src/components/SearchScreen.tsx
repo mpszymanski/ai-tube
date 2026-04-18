@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { VideoResult } from "../types";
+import { VideoResult, ChannelResult } from "../types";
 import { getConfig } from "../services/config";
-import { rephraseQuery, filterClickbait } from "../services/lmStudio";
-import { searchYouTube } from "../services/youtube";
+import { analyzeQuery, filterClickbait } from "../services/lmStudio";
+import { searchYouTube, searchChannels } from "../services/youtube";
 import Logo from "./Logo";
 import WatchTimeCounter from "./WatchTimeCounter";
 
@@ -12,7 +12,7 @@ interface SearchScreenProps {
   weekSeconds: number;
 }
 
-type Phase = "idle" | "thinking";
+type Phase = "idle" | "thinking" | "channel-confirm";
 
 function Spinner() {
   return (
@@ -53,79 +53,22 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Thinking state
+  // Thinking rows
   const [row1Visible, setRow1Visible] = useState(false);
   const [row2Visible, setRow2Visible] = useState(false);
-  const [row3Visible, setRow3Visible] = useState(false);
+  const [row3Visible, setRow3Visible] = useState(false); // Channel row
+  const [row4Visible, setRow4Visible] = useState(false); // Search row
   const [originalQuery, setOriginalQuery] = useState("");
   const [rephrasedText, setRephrasedText] = useState("");
   const [typewriterDone, setTypewriterDone] = useState(false);
+  const [detectedChannelName, setDetectedChannelName] = useState("");
+  const [channelRowDone, setChannelRowDone] = useState(false);
+
+  // Channel confirm
+  const [channelCandidates, setChannelCandidates] = useState<ChannelResult[]>([]);
+  const [pendingVideoQuery, setPendingVideoQuery] = useState("");
 
   const inputRef = useRef<HTMLInputElement>(null);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const query = inputValue.trim();
-    if (!query) return;
-
-    setError(null);
-    setPhase("thinking");
-    setOriginalQuery(query);
-    setRephrasedText("");
-    setTypewriterDone(false);
-    setRow1Visible(false);
-    setRow2Visible(false);
-    setRow3Visible(false);
-
-    setTimeout(() => setRow1Visible(true), 0);
-    setTimeout(() => setRow2Visible(true), 450);
-    setTimeout(() => setRow3Visible(true), 1100);
-
-    const config = getConfig();
-    let rephrased = query;
-    let results: VideoResult[] = [];
-
-    try {
-      rephrased = await rephraseQuery(query, config.lmStudioUrl);
-    } catch {
-      // fallback to original query — handled in rephraseQuery already
-    }
-
-    // Start typewriter after rephrase resolves
-    startTypewriter(rephrased);
-
-    try {
-      const allResults = await searchYouTube(rephrased, config.youtubeApiKey);
-      const titles = allResults.map((r) => r.title);
-      const cleanTitles = await filterClickbait(titles, config.lmStudioUrl);
-      const cleanSet = new Set(cleanTitles);
-      results = allResults.filter((r) => cleanSet.has(r.title)).slice(0, 3);
-
-      if (results.length === 0) {
-        setTimeout(() => {
-          setPhase("idle");
-          setError("No results found. Try a different search.");
-        }, 2200);
-        return;
-      }
-    } catch (err: any) {
-      const msg = err?.message ?? "";
-      setTimeout(() => {
-        setPhase("idle");
-        if (msg.includes("LM Studio") || msg.includes("localhost")) {
-          setError("Cannot reach LM Studio. Make sure it's running.");
-        } else {
-          setError("YouTube search failed. Check your API key.");
-        }
-      }, 2200);
-      return;
-    }
-
-    setTimeout(() => {
-      onSearch(results, query);
-    }, 2200);
-  }
-
   const typewriterTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function startTypewriter(text: string) {
@@ -149,6 +92,119 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
     };
   }, []);
 
+  async function doVideoSearch(videoQuery: string, displayQuery: string, channelId?: string) {
+    const config = getConfig();
+    const searchStart = Date.now();
+    let results: VideoResult[] = [];
+
+    try {
+      const allResults = await searchYouTube(videoQuery, config.youtubeApiKey, channelId);
+      const titles = allResults.map((r) => r.title);
+      const cleanTitles = await filterClickbait(titles, config.lmStudioUrl);
+      const cleanSet = new Set(cleanTitles);
+      results = allResults
+        .filter((r) => cleanSet.has(r.title))
+        .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+        .slice(0, 5);
+
+      if (results.length === 0) {
+        const delay = Math.max(0, 1200 - (Date.now() - searchStart));
+        setTimeout(() => {
+          setPhase("idle");
+          setError("No results found. Try a different search.");
+        }, delay);
+        return;
+      }
+    } catch (err: any) {
+      const msg = err?.message ?? "";
+      const delay = Math.max(0, 1200 - (Date.now() - searchStart));
+      setTimeout(() => {
+        setPhase("idle");
+        if (msg.includes("LM Studio") || msg.includes("localhost")) {
+          setError("Cannot reach LM Studio. Make sure it's running.");
+        } else {
+          setError("YouTube search failed. Check your API key.");
+        }
+      }, delay);
+      return;
+    }
+
+    const delay = Math.max(0, 1200 - (Date.now() - searchStart));
+    setTimeout(() => onSearch(results, displayQuery), delay);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const query = inputValue.trim();
+    if (!query) return;
+
+    setError(null);
+    setPhase("thinking");
+    setOriginalQuery(query);
+    setRephrasedText("");
+    setTypewriterDone(false);
+    setRow1Visible(false);
+    setRow2Visible(false);
+    setRow3Visible(false);
+    setRow4Visible(false);
+    setDetectedChannelName("");
+    setChannelRowDone(false);
+
+    setTimeout(() => setRow1Visible(true), 0);
+    setTimeout(() => setRow2Visible(true), 450);
+
+    const config = getConfig();
+
+    // Step 1: AI analyzes the query
+    let videoQuery = query;
+    let channelName: string | undefined;
+    try {
+      const result = await analyzeQuery(query, config.lmStudioUrl);
+      videoQuery = result.videoQuery;
+      channelName = result.channelName;
+    } catch {
+      // fallback to original query
+    }
+
+    startTypewriter(videoQuery);
+    setPendingVideoQuery(videoQuery);
+
+    // Step 2: Channel lookup (if AI detected one)
+    let resolvedChannelId: string | undefined;
+
+    if (channelName) {
+      setDetectedChannelName(channelName);
+      setRow3Visible(true);
+
+      try {
+        const channels = await searchChannels(channelName, config.youtubeApiKey);
+        if (channels.length === 1) {
+          resolvedChannelId = channels[0].channelId;
+          setChannelRowDone(true);
+        } else if (channels.length > 1) {
+          setChannelCandidates(channels);
+          setPhase("channel-confirm");
+          return;
+        } else {
+          // 0 results — fall back to global search silently
+          setChannelRowDone(true);
+        }
+      } catch {
+        setChannelRowDone(true);
+      }
+    }
+
+    // Step 3: Video search
+    setRow4Visible(true);
+    await doVideoSearch(videoQuery, query, resolvedChannelId);
+  }
+
+  async function handleChannelSelect(channel: ChannelResult | null) {
+    setPhase("thinking");
+    setRow4Visible(true);
+    await doVideoSearch(pendingVideoQuery, originalQuery, channel?.channelId ?? undefined);
+  }
+
   const rowStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -171,110 +227,208 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
     flexShrink: 0,
   };
 
+  const topbar = (
+    <div className="app__topbar" style={{ justifyContent: "flex-end" }}>
+      <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
+    </div>
+  );
+
   if (phase === "thinking") {
     return (
       <>
-      <div className="app__topbar" style={{ justifyContent: "flex-end" }}>
-        <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
-      </div>
-      <div className="app__main">
-        <div style={{ width: "100%", maxWidth: 620, display: "flex", flexDirection: "column", gap: 10 }}>
-          {row1Visible && (
-            <div style={{ ...rowStyle, animationDelay: "0s" }}>
-              <span style={labelStyle}>You</span>
-              <span style={{ color: "var(--text)", flex: 1 }}>{originalQuery}</span>
-              <CheckIcon />
-            </div>
-          )}
-          {row2Visible && (
-            <div style={{ ...rowStyle, animationDelay: "0s" }}>
-              <span style={labelStyle}>Rephrase</span>
-              <span style={{ color: "var(--text)", flex: 1, fontFamily: "var(--font-mono)", fontSize: 14 }}>
-                {rephrasedText}
-                {!typewriterDone && (
-                  <span style={{ animation: "blink 1s steps(2) infinite", display: "inline-block" }}>▌</span>
-                )}
-              </span>
-              {typewriterDone ? <CheckIcon /> : <Spinner />}
-            </div>
-          )}
-          {row3Visible && (
-            <div style={{ ...rowStyle, animationDelay: "0s" }}>
-              <span style={labelStyle}>Search</span>
-              <span style={{ color: "var(--text-dim)", flex: 1 }}>Querying YouTube · filtering clickbait…</span>
-              <Spinner />
-            </div>
-          )}
-          {error && (
-            <p style={{ color: "var(--accent)", fontSize: 13, marginTop: 8, textAlign: "center" }}>{error}</p>
-          )}
+        {topbar}
+        <div className="app__main">
+          <div style={{ width: "100%", maxWidth: 620, display: "flex", flexDirection: "column", gap: 10 }}>
+            {row1Visible && (
+              <div style={{ ...rowStyle, animationDelay: "0s" }}>
+                <span style={labelStyle}>You</span>
+                <span style={{ color: "var(--text)", flex: 1 }}>{originalQuery}</span>
+                <CheckIcon />
+              </div>
+            )}
+            {row2Visible && (
+              <div style={{ ...rowStyle, animationDelay: "0s" }}>
+                <span style={labelStyle}>Query</span>
+                <span style={{ color: "var(--text)", flex: 1, fontFamily: "var(--font-mono)", fontSize: 14 }}>
+                  {rephrasedText}
+                  {!typewriterDone && (
+                    <span style={{ animation: "blink 1s steps(2) infinite", display: "inline-block" }}>▌</span>
+                  )}
+                </span>
+                {typewriterDone ? <CheckIcon /> : <Spinner />}
+              </div>
+            )}
+            {row3Visible && detectedChannelName && (
+              <div style={{ ...rowStyle, animationDelay: "0s" }}>
+                <span style={labelStyle}>Channel</span>
+                <span style={{ color: "var(--text-dim)", flex: 1 }}>
+                  Looking up <span style={{ color: "var(--text)" }}>{detectedChannelName}</span>…
+                </span>
+                {channelRowDone ? <CheckIcon /> : <Spinner />}
+              </div>
+            )}
+            {row4Visible && (
+              <div style={{ ...rowStyle, animationDelay: "0s" }}>
+                <span style={labelStyle}>Search</span>
+                <span style={{ color: "var(--text-dim)", flex: 1 }}>Querying YouTube · filtering clickbait…</span>
+                <Spinner />
+              </div>
+            )}
+            {error && (
+              <p style={{ color: "var(--accent)", fontSize: 13, marginTop: 8, textAlign: "center" }}>{error}</p>
+            )}
+          </div>
         </div>
-      </div>
+      </>
+    );
+  }
+
+  if (phase === "channel-confirm") {
+    return (
+      <>
+        {topbar}
+        <div className="app__main">
+          <div style={{ width: "100%", maxWidth: 620, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <p style={{ fontSize: 13, color: "var(--text-mute)", fontFamily: "var(--font-mono)", marginBottom: 10 }}>
+                Which channel did you mean?
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {channelCandidates.map((ch) => (
+                  <button
+                    key={ch.channelId}
+                    onClick={() => handleChannelSelect(ch)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      background: "var(--bg-elev)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius)",
+                      padding: "12px 16px",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "border-color 0.15s, background 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = "var(--accent)";
+                      e.currentTarget.style.background = "var(--bg-card)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border)";
+                      e.currentTarget.style.background = "var(--bg-elev)";
+                    }}
+                  >
+                    {ch.thumbnailUrl && (
+                      <img
+                        src={ch.thumbnailUrl}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, objectFit: "cover" }}
+                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                      />
+                    )}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+                      <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 500 }}>{ch.title}</span>
+                      {ch.description && (
+                        <span style={{
+                          color: "var(--text-mute)",
+                          fontSize: 12,
+                          fontFamily: "var(--font-mono)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}>
+                          {ch.description}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={() => handleChannelSelect(null)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-mute)",
+                fontSize: 13,
+                cursor: "pointer",
+                padding: "4px 0",
+                textAlign: "left",
+                fontFamily: "var(--font-mono)",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-mute)")}
+            >
+              Search all of YouTube instead →
+            </button>
+          </div>
+        </div>
       </>
     );
   }
 
   return (
     <>
-    <div className="app__topbar" style={{ justifyContent: "flex-end" }}>
-      <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
-    </div>
-    <div className="app__main">
-      <div style={{ width: "100%", maxWidth: 620, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
-        <div style={{ marginBottom: 44 }}>
-          <Logo size="xl" />
-        </div>
-        <form onSubmit={handleSubmit} style={{ width: "100%" }} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
-          <div style={{ position: "relative", width: "100%" }}>
-            <span style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", display: "flex" }}>
-              <SearchIcon active={focused} />
-            </span>
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="What do you want to watch?"
-              style={{
-                width: "100%",
-                padding: "18px 52px",
-                background: focused ? "var(--bg-card)" : "var(--bg-elev)",
-                border: `1px solid ${focused ? "var(--accent)" : "var(--border)"}`,
-                borderRadius: 12,
-                color: "var(--text)",
-                fontSize: 16,
-                fontFamily: "var(--font-sans)",
-                outline: "none",
-                boxShadow: focused ? "0 0 0 3px var(--accent-ring)" : "none",
-                transition: "background 0.2s, border-color 0.2s, box-shadow 0.2s",
-              }}
-            />
-            <span
-              style={{
-                position: "absolute",
-                right: 16,
-                top: "50%",
-                transform: "translateY(-50%)",
-                fontFamily: "var(--font-mono)",
-                fontSize: 11,
-                color: "var(--text-mute)",
-                opacity: focused ? 1 : 0,
-                transition: "opacity 0.15s",
-                pointerEvents: "none",
-              }}
-            >
-              ⏎
-            </span>
+      {topbar}
+      <div className="app__main">
+        <div style={{ width: "100%", maxWidth: 620, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+          <div style={{ marginBottom: 44 }}>
+            <Logo size="xl" />
           </div>
-        </form>
-        {error && (
-          <p style={{ color: "var(--accent)", fontSize: 13, marginTop: 12, textAlign: "center" }}>{error}</p>
-        )}
-        <p style={{ marginTop: 14, fontSize: 12, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>
-          AI rephrases your query · filters clickbait · max 3 results
-        </p>
+          <form onSubmit={handleSubmit} style={{ width: "100%" }} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
+            <div style={{ position: "relative", width: "100%" }}>
+              <span style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", display: "flex" }}>
+                <SearchIcon active={focused} />
+              </span>
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="What do you want to watch?"
+                style={{
+                  width: "100%",
+                  padding: "18px 52px",
+                  background: focused ? "var(--bg-card)" : "var(--bg-elev)",
+                  border: `1px solid ${focused ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: 12,
+                  color: "var(--text)",
+                  fontSize: 16,
+                  fontFamily: "var(--font-sans)",
+                  outline: "none",
+                  boxShadow: focused ? "0 0 0 3px var(--accent-ring)" : "none",
+                  transition: "background 0.2s, border-color 0.2s, box-shadow 0.2s",
+                }}
+              />
+              <span
+                style={{
+                  position: "absolute",
+                  right: 16,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 11,
+                  color: "var(--text-mute)",
+                  opacity: focused ? 1 : 0,
+                  transition: "opacity 0.15s",
+                  pointerEvents: "none",
+                }}
+              >
+                ⏎
+              </span>
+            </div>
+          </form>
+          {error && (
+            <p style={{ color: "var(--accent)", fontSize: 13, marginTop: 12, textAlign: "center" }}>{error}</p>
+          )}
+          <p style={{ marginTop: 14, fontSize: 12, color: "var(--text-mute)", fontFamily: "var(--font-mono)" }}>
+            AI rephrases your query · filters clickbait · max 5 results
+          </p>
+        </div>
       </div>
-    </div>
     </>
   );
 }

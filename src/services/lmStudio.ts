@@ -1,4 +1,7 @@
-export async function rephraseQuery(userInput: string, apiUrl: string): Promise<string> {
+export async function analyzeQuery(
+  userInput: string,
+  apiUrl: string,
+): Promise<{ videoQuery: string; channelName?: string }> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
@@ -12,19 +15,30 @@ export async function rephraseQuery(userInput: string, apiUrl: string): Promise<
           {
             role: "system",
             content:
-              "You are a search query optimizer. The user will give you a casual description of what they want to watch. Your job is to produce a short, precise YouTube search query (3-8 words). Rules:\n- Remove filler words, opinions, and vagueness.\n- Use specific, factual keywords.\n- Output ONLY the search query, nothing else. No quotes, no explanation.",
+              'You analyze YouTube search requests. Output a JSON object with:\n- "videoQuery": a short, precise search query (3-8 words). Remove filler words and vagueness. Use specific, factual keywords.\n- "channelName": (optional) only if the user explicitly mentions a specific YouTube channel or creator by name. Omit this field entirely if no channel is mentioned.\n\nRespond ONLY with valid JSON. No markdown, no explanation.\n\nExamples:\nUser: "show me linus tech tips videos about gpus"\n{"videoQuery":"GPU review benchmark","channelName":"Linus Tech Tips"}\n\nUser: "latest rust programming tutorials"\n{"videoQuery":"Rust programming tutorial 2024"}',
           },
           { role: "user", content: userInput },
         ],
-        max_tokens: 50,
-        temperature: 0.3,
+        max_tokens: 80,
+        temperature: 0.1,
       }),
     });
     clearTimeout(timeout);
     const data = await res.json();
-    return data.choices[0].message.content.trim();
+    const raw = data.choices[0].message.content.trim();
+    const parsed = JSON.parse(raw);
+    return {
+      videoQuery:
+        typeof parsed.videoQuery === "string" && parsed.videoQuery
+          ? parsed.videoQuery
+          : userInput,
+      channelName:
+        typeof parsed.channelName === "string" && parsed.channelName
+          ? parsed.channelName
+          : undefined,
+    };
   } catch {
-    return userInput;
+    return { videoQuery: userInput };
   }
 }
 
