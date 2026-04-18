@@ -59,6 +59,41 @@ export async function searchChannels(name: string, apiKey: string): Promise<Chan
   }));
 }
 
+export async function getChannelLatestVideos(channelId: string, apiKey: string): Promise<VideoResult[]> {
+  const url = new URL("https://www.googleapis.com/youtube/v3/search");
+  url.searchParams.set("part", "snippet");
+  url.searchParams.set("type", "video");
+  url.searchParams.set("channelId", channelId);
+  url.searchParams.set("order", "date");
+  url.searchParams.set("maxResults", "10");
+  url.searchParams.set("key", apiKey);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    throw new Error(`YouTube API error: ${res.status} ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  const items: any[] = data.items ?? [];
+  const videoIds = items.map((item) => item.id.videoId).filter(Boolean);
+
+  const details = videoIds.length > 0 ? await fetchVideoDetails(videoIds, apiKey) : new Map();
+
+  return items.map((item: any): VideoResult => {
+    const id = item.id.videoId;
+    const d = details.get(id);
+    return {
+      videoId: id,
+      title: decodeHtmlEntities(item.snippet.title),
+      thumbnailUrl: item.snippet.thumbnails.medium.url,
+      channelTitle: d?.channelTitle ?? item.snippet.channelTitle ?? "",
+      publishedAt: d?.publishedAt ?? item.snippet.publishedAt ?? "",
+      duration: d?.duration ?? "",
+      viewCount: d?.viewCount ?? "",
+    };
+  });
+}
+
 export async function searchYouTube(query: string, apiKey: string, channelId?: string): Promise<VideoResult[]> {
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.searchParams.set("part", "snippet");

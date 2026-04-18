@@ -18,11 +18,18 @@ export interface AppConfig {
   youtubeApiKey: string;
 }
 
-export type AppScreen = "setup" | "search" | "results" | "player";
+export type AppScreen = "setup" | "search" | "results" | "channel-results" | "player";
+
+export type SearchIntent = "videos" | "channel" | "channel-videos";
 
 export interface ChannelResult {
   channelId: string;
   title: string;
   thumbnailUrl: string;
   description: string;
+}
+
+export interface ChannelResultWithVideos {
+  channel: ChannelResult;
+  latestVideos: VideoResult[];
 }

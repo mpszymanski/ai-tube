@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import { VideoResult, ChannelResult } from "../types";
+import { VideoResult, ChannelResult, ChannelResultWithVideos } from "../types";
 import { getConfig } from "../services/config";
 import { analyzeQuery, classifyClickbait } from "../services/lmStudio";
-import { searchYouTube, searchChannels } from "../services/youtube";
+import { searchYouTube, searchChannels, getChannelLatestVideos } from "../services/youtube";
 import Logo from "./Logo";
 import WatchTimeCounter from "./WatchTimeCounter";
 
 interface SearchScreenProps {
   onSearch(results: VideoResult[], query: string): void;
+  onChannelSearch(data: ChannelResultWithVideos, query: string): void;
   todaySeconds: number;
   weekSeconds: number;
 }
@@ -47,7 +48,7 @@ function SearchIcon({ active }: { active: boolean }) {
   );
 }
 
-export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: SearchScreenProps) {
+export default function SearchScreen({ onSearch, onChannelSearch, todaySeconds, weekSeconds }: SearchScreenProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [inputValue, setInputValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -67,6 +68,7 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
   // Channel confirm
   const [channelCandidates, setChannelCandidates] = useState<ChannelResult[]>([]);
   const [pendingVideoQuery, setPendingVideoQuery] = useState("");
+  const [pendingIntent, setPendingIntent] = useState<"videos" | "channel" | "channel-videos">("videos");
 
   const inputRef = useRef<HTMLInputElement>(null);
   const typewriterTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -91,6 +93,30 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
       if (typewriterTimer.current) clearInterval(typewriterTimer.current);
     };
   }, []);
+
+  async function doChannelSearch(channel: ChannelResult, displayQuery: string) {
+    const config = getConfig();
+    const searchStart = Date.now();
+
+    try {
+      const allResults = await getChannelLatestVideos(channel.channelId, config.youtubeApiKey);
+      const titles = allResults.map((r) => r.title);
+      const classified = await classifyClickbait(titles, config.lmStudioUrl);
+      const clickbaitMap = new Map(classified.map((item) => [item.title, item.clickbait]));
+      const latestVideos = allResults
+        .map((r) => ({ ...r, isClickbait: clickbaitMap.get(r.title) ?? false }))
+        .slice(0, 10);
+
+      const delay = Math.max(0, 1200 - (Date.now() - searchStart));
+      setTimeout(() => onChannelSearch({ channel, latestVideos }, displayQuery), delay);
+    } catch {
+      const delay = Math.max(0, 1200 - (Date.now() - searchStart));
+      setTimeout(() => {
+        setPhase("idle");
+        setError("Failed to load channel videos. Check your API key.");
+      }, delay);
+    }
+  }
 
   async function doVideoSearch(videoQuery: string, displayQuery: string, channelId?: string) {
     const config = getConfig();
@@ -157,10 +183,12 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
 
     // Step 1: AI analyzes the query
     let videoQuery = query;
+    let intent: "videos" | "channel" | "channel-videos" = "videos";
     let channelName: string | undefined;
     try {
       const result = await analyzeQuery(query, config.lmStudioUrl);
       videoQuery = result.videoQuery;
+      intent = result.intent;
       channelName = result.channelName;
     } catch {
       // fallback to original query
@@ -168,11 +196,13 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
 
     startTypewriter(videoQuery);
     setPendingVideoQuery(videoQuery);
+    setPendingIntent(intent);
 
     // Step 2: Channel lookup (if AI detected one)
     let resolvedChannelId: string | undefined;
+    let resolvedChannel: ChannelResult | undefined;
 
-    if (channelName) {
+    if (channelName && (intent === "channel" || intent === "channel-videos")) {
       setDetectedChannelName(channelName);
       setRow3Visible(true);
 
@@ -180,13 +210,14 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
         const channels = await searchChannels(channelName, config.youtubeApiKey);
         if (channels.length === 1) {
           resolvedChannelId = channels[0].channelId;
+          resolvedChannel = channels[0];
           setChannelRowDone(true);
         } else if (channels.length > 1) {
           setChannelCandidates(channels);
           setPhase("channel-confirm");
           return;
         } else {
-          // 0 results — fall back to global search silently
+          // 0 results — fall back to global video search silently
           setChannelRowDone(true);
         }
       } catch {
@@ -194,15 +225,23 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
       }
     }
 
-    // Step 3: Video search
+    // Step 3: Search based on intent
     setRow4Visible(true);
-    await doVideoSearch(videoQuery, query, resolvedChannelId);
+    if (intent === "channel" && resolvedChannel) {
+      await doChannelSearch(resolvedChannel, query);
+    } else {
+      await doVideoSearch(videoQuery, query, resolvedChannelId);
+    }
   }
 
   async function handleChannelSelect(channel: ChannelResult | null) {
     setPhase("thinking");
     setRow4Visible(true);
-    await doVideoSearch(pendingVideoQuery, originalQuery, channel?.channelId ?? undefined);
+    if (pendingIntent === "channel" && channel) {
+      await doChannelSearch(channel, originalQuery);
+    } else {
+      await doVideoSearch(pendingVideoQuery, originalQuery, channel?.channelId ?? undefined);
+    }
   }
 
   const rowStyle: React.CSSProperties = {
@@ -270,7 +309,11 @@ export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: Se
             {row4Visible && (
               <div style={{ ...rowStyle, animationDelay: "0s" }}>
                 <span style={labelStyle}>Search</span>
-                <span style={{ color: "var(--text-dim)", flex: 1 }}>Querying YouTube · filtering clickbait…</span>
+                <span style={{ color: "var(--text-dim)", flex: 1 }}>
+                  {pendingIntent === "channel"
+                    ? "Loading latest videos…"
+                    : "Querying YouTube · filtering clickbait…"}
+                </span>
                 <Spinner />
               </div>
             )}

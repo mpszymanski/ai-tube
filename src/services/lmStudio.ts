@@ -1,7 +1,7 @@
 export async function analyzeQuery(
   userInput: string,
   apiUrl: string,
-): Promise<{ videoQuery: string; channelName?: string }> {
+): Promise<{ videoQuery: string; intent: "videos" | "channel" | "channel-videos"; channelName?: string }> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
@@ -15,11 +15,11 @@ export async function analyzeQuery(
           {
             role: "system",
             content:
-              'You analyze YouTube search requests. Output a JSON object with:\n- "videoQuery": a short, precise search query (3-8 words). Remove filler words and vagueness. Use specific, factual keywords.\n- "channelName": (optional) only if the user explicitly mentions a specific YouTube channel or creator by name. Omit this field entirely if no channel is mentioned.\n\nRespond ONLY with valid JSON. No markdown, no explanation.\n\nExamples:\nUser: "show me linus tech tips videos about gpus"\n{"videoQuery":"GPU review benchmark","channelName":"Linus Tech Tips"}\n\nUser: "latest rust programming tutorials"\n{"videoQuery":"Rust programming tutorial 2024"}',
+              'You analyze YouTube search requests. Output a JSON object with:\n- "videoQuery": a short, precise search query (3-8 words). Remove filler words and vagueness. Use specific, factual keywords.\n- "intent": one of "videos", "channel", "channel-videos":\n  - "channel": user wants to browse or find a specific channel (e.g. "show me the Fireship channel", "find MrBeast channel", "open Linus channel")\n  - "channel-videos": user wants videos from a specific channel matching a topic (e.g. "Linus Tech Tips GPU reviews", "show me veritasium videos about physics")\n  - "videos": all other searches (no specific channel mentioned, or general topic search)\n- "channelName": (optional) only if the user explicitly mentions a specific YouTube channel or creator by name.\n\nRespond ONLY with valid JSON. No markdown, no explanation.\n\nExamples:\nUser: "show me the fireship channel"\n{"videoQuery":"Fireship","intent":"channel","channelName":"Fireship"}\n\nUser: "linus tech tips GPU reviews"\n{"videoQuery":"GPU review benchmark","intent":"channel-videos","channelName":"Linus Tech Tips"}\n\nUser: "find the MrBeast channel"\n{"videoQuery":"MrBeast","intent":"channel","channelName":"MrBeast"}\n\nUser: "veritasium videos about black holes"\n{"videoQuery":"black holes explainer","intent":"channel-videos","channelName":"Veritasium"}\n\nUser: "latest rust programming tutorials"\n{"videoQuery":"Rust programming tutorial","intent":"videos"}',
           },
           { role: "user", content: userInput },
         ],
-        max_tokens: 80,
+        max_tokens: 100,
         temperature: 0.1,
       }),
     });
@@ -27,18 +27,23 @@ export async function analyzeQuery(
     const data = await res.json();
     const raw = data.choices[0].message.content.trim();
     const parsed = JSON.parse(raw);
+    const validIntents = ["videos", "channel", "channel-videos"];
     return {
       videoQuery:
         typeof parsed.videoQuery === "string" && parsed.videoQuery
           ? parsed.videoQuery
           : userInput,
+      intent:
+        typeof parsed.intent === "string" && validIntents.includes(parsed.intent)
+          ? parsed.intent
+          : "videos",
       channelName:
         typeof parsed.channelName === "string" && parsed.channelName
           ? parsed.channelName
           : undefined,
     };
   } catch {
-    return { videoQuery: userInput };
+    return { videoQuery: userInput, intent: "videos" };
   }
 }
 
