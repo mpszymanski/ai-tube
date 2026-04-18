@@ -67,6 +67,12 @@ export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack 
     if (!iframeRef.current) return;
     playerRef.current = new window.YT.Player(iframeRef.current, {
       events: {
+        onReady: (event: any) => {
+          if (event.target.getPlayerState() === window.YT.PlayerState.PLAYING) {
+            clearWatchInterval();
+            intervalRef.current = setInterval(() => addSeconds(1), 1000);
+          }
+        },
         onStateChange: (event: any) => {
           const state = event.data;
           if (state === window.YT.PlayerState.PLAYING) {

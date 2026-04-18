@@ -4,9 +4,12 @@ import { getConfig } from "../services/config";
 import { rephraseQuery, filterClickbait } from "../services/lmStudio";
 import { searchYouTube } from "../services/youtube";
 import Logo from "./Logo";
+import WatchTimeCounter from "./WatchTimeCounter";
 
 interface SearchScreenProps {
   onSearch(results: VideoResult[], query: string): void;
+  todaySeconds: number;
+  weekSeconds: number;
 }
 
 type Phase = "idle" | "thinking";
@@ -44,7 +47,7 @@ function SearchIcon({ active }: { active: boolean }) {
   );
 }
 
-export default function SearchScreen({ onSearch }: SearchScreenProps) {
+export default function SearchScreen({ onSearch, todaySeconds, weekSeconds }: SearchScreenProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [inputValue, setInputValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -170,6 +173,10 @@ export default function SearchScreen({ onSearch }: SearchScreenProps) {
 
   if (phase === "thinking") {
     return (
+      <>
+      <div className="app__topbar" style={{ justifyContent: "flex-end" }}>
+        <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
+      </div>
       <div className="app__main">
         <div style={{ width: "100%", maxWidth: 620, display: "flex", flexDirection: "column", gap: 10 }}>
           {row1Visible && (
@@ -203,10 +210,15 @@ export default function SearchScreen({ onSearch }: SearchScreenProps) {
           )}
         </div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+    <div className="app__topbar" style={{ justifyContent: "flex-end" }}>
+      <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
+    </div>
     <div className="app__main">
       <div style={{ width: "100%", maxWidth: 620, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
         <div style={{ marginBottom: 44 }}>
@@ -263,5 +275,6 @@ export default function SearchScreen({ onSearch }: SearchScreenProps) {
         </p>
       </div>
     </div>
+    </>
   );
 }

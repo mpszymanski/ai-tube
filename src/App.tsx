@@ -21,7 +21,7 @@ export default function App() {
     const id = setInterval(() => {
       setTodaySeconds(getTodaySeconds());
       setWeekSeconds(getWeekSeconds());
-    }, 5000);
+    }, 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -58,7 +58,7 @@ export default function App() {
   if (screen === "search") {
     return (
       <div className="app">
-        <SearchScreen onSearch={handleSearch} />
+        <SearchScreen onSearch={handleSearch} todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
       </div>
     );
   }
