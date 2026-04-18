@@ -3,15 +3,17 @@ import { VideoResult, ChannelResult, ChannelResultWithVideos } from "../types";
 import BackButton from "./BackButton";
 import TagPicker from "./TagPicker";
 import { getConfig } from "../services/config";
-import { analyzeQuery, classifyClickbait } from "../services/lmStudio";
-import { searchYouTube, searchChannels, getChannelLatestVideos, searchYouTubeMultiChannel } from "../services/youtube";
+import { analyzeQuery, classifyClickbait, groupVideosByTopic } from "../services/lmStudio";
+import { searchYouTube, searchChannels, getChannelLatestVideos } from "../services/youtube";
 import { getAllTags, getChannelsByTag, normalizeTag, subscribeToChanges } from "../services/taggedChannels";
 import { tagStyle } from "../utils/tagColor";
+import { TopicGroup } from "../types";
 import Logo from "./Logo";
 import WatchTimeCounter from "./WatchTimeCounter";
 
 interface SearchScreenProps {
   onSearch(results: VideoResult[], query: string): void;
+  onGroupedSearch(groups: TopicGroup[], query: string): void;
   onChannelSearch(data: ChannelResultWithVideos, query: string): void;
   onSubscriptions(): void;
   todaySeconds: number;
@@ -64,7 +66,7 @@ function SubscriptionsIcon() {
 }
 
 
-export default function SearchScreen({ onSearch, onChannelSearch, onSubscriptions, todaySeconds, weekSeconds }: SearchScreenProps) {
+export default function SearchScreen({ onSearch, onGroupedSearch, onChannelSearch, onSubscriptions, todaySeconds, weekSeconds }: SearchScreenProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [inputValue, setInputValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -85,6 +87,8 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
   const [channelCandidates, setChannelCandidates] = useState<ChannelResult[]>([]);
   const [pendingVideoQuery, setPendingVideoQuery] = useState("");
   const [pendingIntent, setPendingIntent] = useState<"videos" | "channel" | "channel-videos">("videos");
+
+  const [isTagSearch, setIsTagSearch] = useState(false);
 
   // Tag pills
   const [allTags, setAllTags] = useState(() => getAllTags());
@@ -182,26 +186,58 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
     setTimeout(() => onSearch(results, displayQuery), delay);
   }
 
-  async function doTagVideoSearch(videoQuery: string, displayQuery: string, channelIds: string[]) {
+  async function doTagVideoSearch(
+    filter: string,
+    displayQuery: string,
+    channels: Array<{ channelId: string; thumbnailUrl: string }>,
+  ) {
     const config = getConfig();
     const searchStart = Date.now();
     setRow4Visible(true);
 
     try {
-      const allResults = await searchYouTubeMultiChannel(videoQuery, channelIds, config.youtubeApiKey);
-      const titles = allResults.map((r) => r.title);
-      const classified = await classifyClickbait(titles, config.lmStudioUrl);
-      const clickbaitMap = new Map(classified.map((item) => [item.title, item.clickbait]));
-      const results = allResults.map((r) => ({ ...r, isClickbait: clickbaitMap.get(r.title) ?? false }));
+      const settled = await Promise.allSettled(
+        channels.map((ch) => getChannelLatestVideos(ch.channelId, config.youtubeApiKey, ch.thumbnailUrl))
+      );
 
-      if (results.length === 0) {
+      const allVideos: VideoResult[] = [];
+      const seen = new Set<string>();
+      for (const result of settled) {
+        if (result.status === "fulfilled") {
+          for (const video of result.value) {
+            if (!seen.has(video.videoId)) {
+              seen.add(video.videoId);
+              allVideos.push(video);
+            }
+          }
+        }
+      }
+
+      if (allVideos.length === 0) {
         const delay = Math.max(0, 1200 - (Date.now() - searchStart));
-        setTimeout(() => { setPhase("idle"); setError("No results found for this tag."); }, delay);
+        setTimeout(() => { setPhase("idle"); setError("No recent videos found for this tag."); }, delay);
+        return;
+      }
+
+      const videoEntries = allVideos.map((v) => ({ videoId: v.videoId, title: v.title, channelTitle: v.channelTitle }));
+      const rawGroups = await groupVideosByTopic(videoEntries, filter, config.lmStudioUrl);
+
+      const videoMap = new Map(allVideos.map((v) => [v.videoId, v]));
+      const topicGroups: TopicGroup[] = rawGroups
+        .map((g) => ({
+          topic: g.topic,
+          videos: g.videoIds.map((id) => videoMap.get(id)).filter(Boolean) as VideoResult[],
+        }))
+        .filter((g) => g.videos.length > 0);
+
+      if (topicGroups.length === 0) {
+        const delay = Math.max(0, 1200 - (Date.now() - searchStart));
+        setTimeout(() => { setPhase("idle"); setError("Could not group videos by topic."); }, delay);
         return;
       }
 
       const delay = Math.max(0, 1200 - (Date.now() - searchStart));
-      setTimeout(() => onSearch(results, displayQuery), delay);
+      setTimeout(() => onGroupedSearch(topicGroups, displayQuery), delay);
     } catch {
       const delay = Math.max(0, 1200 - (Date.now() - searchStart));
       setTimeout(() => { setPhase("idle"); setError("Tag search failed. Check your API key."); }, delay);
@@ -209,10 +245,11 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
   }
 
   async function handleTagClick(tag: string) {
-    const channels = getChannelsByTag(tag);
-    if (channels.length === 0) return;
+    const tagChannels = getChannelsByTag(tag);
+    if (tagChannels.length === 0) return;
     setError(null);
     setPhase("thinking");
+    setIsTagSearch(true);
     setOriginalQuery(`#${tag}`);
     setRephrasedText("");
     setTypewriterDone(false);
@@ -221,8 +258,7 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
     setRow3Visible(false);
     setRow4Visible(false);
     setTimeout(() => setRow1Visible(true), 0);
-    const channelIds = channels.map((ch) => ch.channelId);
-    await doTagVideoSearch("", `#${tag}`, channelIds);
+    await doTagVideoSearch("", `#${tag}`, tagChannels);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -238,6 +274,7 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
       if (tagChannels.length > 0) {
         setError(null);
         setPhase("thinking");
+        setIsTagSearch(true);
         setOriginalQuery(query);
         setRephrasedText("");
         setTypewriterDone(false);
@@ -246,12 +283,12 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
         setRow3Visible(false);
         setRow4Visible(false);
         setTimeout(() => setRow1Visible(true), 0);
-        const channelIds = tagChannels.map((ch) => ch.channelId);
-        await doTagVideoSearch(restQuery, query, channelIds);
+        await doTagVideoSearch(restQuery, query, tagChannels);
         return;
       }
     }
 
+    setIsTagSearch(false);
     setError(null);
     setPhase("thinking");
     setOriginalQuery(query);
@@ -417,7 +454,9 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
               <div style={{ ...rowStyle, animationDelay: "0s" }}>
                 <span style={labelStyle}>Search</span>
                 <span style={{ color: "var(--text-dim)", flex: 1 }}>
-                  {pendingIntent === "channel"
+                  {isTagSearch
+                    ? "Fetching recent videos · grouping by topic…"
+                    : pendingIntent === "channel"
                     ? "Loading latest videos…"
                     : "Querying YouTube · filtering clickbait…"}
                 </span>

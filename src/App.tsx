@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { AppScreen, VideoResult, ChannelResult, ChannelResultWithVideos } from "./types";
+import { AppScreen, VideoResult, ChannelResult, ChannelResultWithVideos, TopicGroup } from "./types";
 import { isConfigured, getConfig } from "./services/config";
 import { getTodaySeconds, getWeekSeconds } from "./services/watchTime";
 import { getChannelLatestVideos } from "./services/youtube";
@@ -7,6 +7,7 @@ import { classifyClickbait } from "./services/lmStudio";
 import SetupScreen from "./components/SetupScreen";
 import SearchScreen from "./components/SearchScreen";
 import ResultsList from "./components/ResultsList";
+import GroupedResultsList from "./components/GroupedResultsList";
 import PlayerScreen from "./components/PlayerScreen";
 import ChannelResultsScreen from "./components/ChannelResultsScreen";
 import SubscriptionsScreen from "./components/SubscriptionsScreen";
@@ -16,6 +17,7 @@ export default function App() {
     isConfigured() ? "search" : "setup"
   );
   const [results, setResults] = useState<VideoResult[]>([]);
+  const [groupedResults, setGroupedResults] = useState<TopicGroup[]>([]);
   const [channelData, setChannelData] = useState<ChannelResultWithVideos | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoResult | null>(null);
   const [query, setQuery] = useState("");
@@ -32,8 +34,16 @@ export default function App() {
 
   function handleSearch(newResults: VideoResult[], searchQuery: string) {
     setResults(newResults);
+    setGroupedResults([]);
     setQuery(searchQuery);
     setScreen("results");
+  }
+
+  function handleGroupedSearch(groups: TopicGroup[], searchQuery: string) {
+    setGroupedResults(groups);
+    setResults([]);
+    setQuery(searchQuery);
+    setScreen("grouped-results");
   }
 
   function handleChannelSearch(data: ChannelResultWithVideos, searchQuery: string) {
@@ -43,9 +53,12 @@ export default function App() {
   }
 
   function handleSelect(videoId: string) {
-    const allVideos = screen === "channel-results" && channelData
-      ? channelData.latestVideos
-      : results;
+    const allVideos =
+      screen === "channel-results" && channelData
+        ? channelData.latestVideos
+        : screen === "grouped-results"
+        ? groupedResults.flatMap((g) => g.videos)
+        : results;
     const video = allVideos.find((r) => r.videoId === videoId) ?? null;
     setSelectedVideo(video);
     setScreen("player");
@@ -53,6 +66,7 @@ export default function App() {
 
   function handleBackFromResults() {
     setResults([]);
+    setGroupedResults([]);
     setChannelData(null);
     setQuery("");
     setScreen("search");
@@ -61,6 +75,8 @@ export default function App() {
   function handleBackFromPlayer() {
     if (channelData) {
       setScreen("channel-results");
+    } else if (groupedResults.length > 0) {
+      setScreen("grouped-results");
     } else {
       setScreen("results");
     }
@@ -95,6 +111,7 @@ export default function App() {
       <div className="app">
         <SearchScreen
           onSearch={handleSearch}
+          onGroupedSearch={handleGroupedSearch}
           onChannelSearch={handleChannelSearch}
           onSubscriptions={() => setScreen("subscriptions")}
           todaySeconds={todaySeconds}
@@ -108,6 +125,19 @@ export default function App() {
     return (
       <ResultsList
         results={results}
+        query={query}
+        todaySeconds={todaySeconds}
+        weekSeconds={weekSeconds}
+        onSelect={handleSelect}
+        onBack={handleBackFromResults}
+      />
+    );
+  }
+
+  if (screen === "grouped-results") {
+    return (
+      <GroupedResultsList
+        groups={groupedResults}
         query={query}
         todaySeconds={todaySeconds}
         weekSeconds={weekSeconds}

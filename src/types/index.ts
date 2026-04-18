@@ -20,7 +20,12 @@ export interface AppConfig {
   youtubeApiKey: string;
 }
 
-export type AppScreen = "setup" | "search" | "results" | "channel-results" | "player" | "subscriptions";
+export type AppScreen = "setup" | "search" | "results" | "channel-results" | "player" | "subscriptions" | "grouped-results";
+
+export interface TopicGroup {
+  topic: string;
+  videos: VideoResult[];
+}
 
 export type SearchIntent = "videos" | "channel" | "channel-videos";
 
