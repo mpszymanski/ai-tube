@@ -405,9 +405,25 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
   }
 
   if (phase === "channel-confirm") {
+    const confirmTopbar = (
+      <div className="app__topbar" style={{ justifyContent: "space-between" }}>
+        <button
+          onClick={() => setPhase("idle")}
+          style={subsBtnStyle}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-elev)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "transparent"; }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Back
+        </button>
+        <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
+      </div>
+    );
     return (
       <>
-        {topbar}
+        {confirmTopbar}
         <div className="app__main">
           <div style={{ width: "100%", maxWidth: 620, display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
@@ -469,41 +485,23 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
                 ))}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 16 }}>
-              <button
-                onClick={() => setPhase("idle")}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--text-mute)",
-                  fontSize: 13,
-                  cursor: "pointer",
-                  padding: "4px 0",
-                  fontFamily: "var(--font-mono)",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-mute)")}
-              >
-                ← Back
-              </button>
-              <button
-                onClick={() => handleChannelSelect(null)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--text-mute)",
-                  fontSize: 13,
-                  cursor: "pointer",
-                  padding: "4px 0",
-                  textAlign: "left",
-                  fontFamily: "var(--font-mono)",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-mute)")}
-              >
-                Search all of YouTube instead →
-              </button>
-            </div>
+            <button
+              onClick={() => handleChannelSelect(null)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-mute)",
+                fontSize: 13,
+                cursor: "pointer",
+                padding: "4px 0",
+                textAlign: "left",
+                fontFamily: "var(--font-mono)",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-mute)")}
+            >
+              Search all of YouTube instead →
+            </button>
           </div>
         </div>
       </>
