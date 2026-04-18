@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { VideoResult, ChannelResult, ChannelResultWithVideos } from "../types";
 import BackButton from "./BackButton";
-import SubscribeButton from "./SubscribeButton";
+import TagPicker from "./TagPicker";
 import { getConfig } from "../services/config";
 import { analyzeQuery, classifyClickbait } from "../services/lmStudio";
-import { searchYouTube, searchChannels, getChannelLatestVideos } from "../services/youtube";
+import { searchYouTube, searchChannels, getChannelLatestVideos, searchYouTubeMultiChannel } from "../services/youtube";
+import { getAllTags, getChannelsByTag, normalizeTag, subscribeToChanges } from "../services/taggedChannels";
+import { tagStyle } from "../utils/tagColor";
 import Logo from "./Logo";
 import WatchTimeCounter from "./WatchTimeCounter";
 
@@ -83,6 +85,13 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
   const [channelCandidates, setChannelCandidates] = useState<ChannelResult[]>([]);
   const [pendingVideoQuery, setPendingVideoQuery] = useState("");
   const [pendingIntent, setPendingIntent] = useState<"videos" | "channel" | "channel-videos">("videos");
+
+  // Tag pills
+  const [allTags, setAllTags] = useState(() => getAllTags());
+  useEffect(() => {
+    setAllTags(getAllTags());
+    return subscribeToChanges(() => setAllTags(getAllTags()));
+  }, []);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const typewriterTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -173,10 +182,75 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
     setTimeout(() => onSearch(results, displayQuery), delay);
   }
 
+  async function doTagVideoSearch(videoQuery: string, displayQuery: string, channelIds: string[]) {
+    const config = getConfig();
+    const searchStart = Date.now();
+    setRow4Visible(true);
+
+    try {
+      const allResults = await searchYouTubeMultiChannel(videoQuery, channelIds, config.youtubeApiKey);
+      const titles = allResults.map((r) => r.title);
+      const classified = await classifyClickbait(titles, config.lmStudioUrl);
+      const clickbaitMap = new Map(classified.map((item) => [item.title, item.clickbait]));
+      const results = allResults.map((r) => ({ ...r, isClickbait: clickbaitMap.get(r.title) ?? false }));
+
+      if (results.length === 0) {
+        const delay = Math.max(0, 1200 - (Date.now() - searchStart));
+        setTimeout(() => { setPhase("idle"); setError("No results found for this tag."); }, delay);
+        return;
+      }
+
+      const delay = Math.max(0, 1200 - (Date.now() - searchStart));
+      setTimeout(() => onSearch(results, displayQuery), delay);
+    } catch {
+      const delay = Math.max(0, 1200 - (Date.now() - searchStart));
+      setTimeout(() => { setPhase("idle"); setError("Tag search failed. Check your API key."); }, delay);
+    }
+  }
+
+  async function handleTagClick(tag: string) {
+    const channels = getChannelsByTag(tag);
+    if (channels.length === 0) return;
+    setError(null);
+    setPhase("thinking");
+    setOriginalQuery(`#${tag}`);
+    setRephrasedText("");
+    setTypewriterDone(false);
+    setRow1Visible(false);
+    setRow2Visible(false);
+    setRow3Visible(false);
+    setRow4Visible(false);
+    setTimeout(() => setRow1Visible(true), 0);
+    const channelIds = channels.map((ch) => ch.channelId);
+    await doTagVideoSearch("", `#${tag}`, channelIds);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const query = inputValue.trim();
     if (!query) return;
+
+    const tagMatch = query.match(/^#([a-zA-Z0-9-]+)\s*(.*)/);
+    if (tagMatch) {
+      const tagName = normalizeTag(tagMatch[1]);
+      const restQuery = tagMatch[2].trim();
+      const tagChannels = getChannelsByTag(tagName);
+      if (tagChannels.length > 0) {
+        setError(null);
+        setPhase("thinking");
+        setOriginalQuery(query);
+        setRephrasedText("");
+        setTypewriterDone(false);
+        setRow1Visible(false);
+        setRow2Visible(false);
+        setRow3Visible(false);
+        setRow4Visible(false);
+        setTimeout(() => setRow1Visible(true), 0);
+        const channelIds = tagChannels.map((ch) => ch.channelId);
+        await doTagVideoSearch(restQuery, query, channelIds);
+        return;
+      }
+    }
 
     setError(null);
     setPhase("thinking");
@@ -377,9 +451,12 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {channelCandidates.map((ch) => (
-                  <button
+                  <div
                     key={ch.channelId}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleChannelSelect(ch)}
+                    onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleChannelSelect(ch)}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -425,8 +502,8 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
                         </span>
                       )}
                     </div>
-                    <SubscribeButton channel={ch} size="sm" />
-                  </button>
+                    <TagPicker channel={ch} size="sm" />
+                  </div>
                 ))}
               </div>
             </div>
@@ -461,6 +538,35 @@ export default function SearchScreen({ onSearch, onChannelSearch, onSubscription
           <div style={{ marginBottom: 44 }}>
             <Logo size="xl" />
           </div>
+          {allTags.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20, justifyContent: "center" }}>
+              {allTags.map((tag) => {
+                const s = tagStyle(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => handleTagClick(tag)}
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "var(--font-mono)",
+                      padding: "5px 11px",
+                      borderRadius: "var(--radius-sm)",
+                      border: `1px solid ${s.borderColor}`,
+                      color: s.color,
+                      background: s.background,
+                      cursor: "pointer",
+                      transition: "opacity 0.15s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                  >
+                    #{tag}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <form onSubmit={handleSubmit} style={{ width: "100%" }} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
             <div style={{ position: "relative", width: "100%" }}>
               <span style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", display: "flex" }}>

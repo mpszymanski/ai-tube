@@ -35,3 +35,11 @@ export interface ChannelResultWithVideos {
   channel: ChannelResult;
   latestVideos: VideoResult[];
 }
+
+export interface TaggedChannel {
+  channelId: string;
+  title: string;
+  thumbnailUrl: string;
+  description: string;
+  tags: string[];
+}

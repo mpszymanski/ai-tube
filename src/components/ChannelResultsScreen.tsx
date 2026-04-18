@@ -4,7 +4,7 @@ import ResultCard from "./ResultCard";
 import WatchTimeCounter from "./WatchTimeCounter";
 import Toggle from "./Toggle";
 import BackButton from "./BackButton";
-import SubscribeButton from "./SubscribeButton";
+import TagPicker from "./TagPicker";
 import { ANIMATION_DELAYS } from "../utils/constants";
 
 interface ChannelResultsScreenProps {
@@ -71,7 +71,7 @@ export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, 
                 </span>
               )}
             </div>
-            <SubscribeButton channel={channel} />
+            <TagPicker channel={channel} />
           </div>
 
           {/* Videos header */}

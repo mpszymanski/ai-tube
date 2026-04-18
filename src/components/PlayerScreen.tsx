@@ -3,7 +3,7 @@ import { VideoResult } from "../types";
 import { addSeconds } from "../services/watchTime";
 import WatchTimeCounter from "./WatchTimeCounter";
 import BackButton from "./BackButton";
-import SubscribeButton from "./SubscribeButton";
+import TagPicker from "./TagPicker";
 import { formatViewCount, formatPublishedAt } from "../utils/formatters";
 
 declare global {
@@ -130,7 +130,7 @@ export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack 
                 </div>
               </div>
               {video.channelId && (
-                <SubscribeButton
+                <TagPicker
                   channel={{
                     channelId: video.channelId,
                     title: video.channelTitle,
