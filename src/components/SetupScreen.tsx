@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CogIcon } from "./Icons";
 import { getConfig, saveConfig } from "../services/config";
 
 interface SetupScreenProps {
@@ -63,11 +64,7 @@ export default function SetupScreen({ onSave, onBack }: SetupScreenProps) {
               justifyContent: "center",
             }}
           >
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <circle cx="11" cy="11" r="6" stroke="var(--text-dim)" strokeWidth="2" />
-              <path d="M16 16l8 8" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" />
-              <path d="M21 19l2 2" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" />
-            </svg>
+            <CogIcon size={28} color="var(--text-dim)" />
           </div>
           <div style={{ textAlign: "center" }}>
             <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text)" }}>

@@ -88,3 +88,7 @@ button:focus-visible {
 @keyframes blink {
   50% { opacity: 0; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .app__main * { animation-duration: 0.01ms !important; animation-delay: 0ms !important; }
+}

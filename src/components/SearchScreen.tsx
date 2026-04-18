@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { CogIcon } from "./Icons";
 import { VideoResult, ChannelResult, ChannelResultWithVideos } from "../types";
 import BackButton from "./BackButton";
 import TagPicker from "./TagPicker";
@@ -537,7 +538,6 @@ export default function SearchScreen({
         Subscriptions
       </button>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
         <button
           onClick={onSettings}
           title="Settings"
@@ -553,14 +553,21 @@ export default function SearchScreen({
             cursor: "pointer",
             transition: "color 0.15s, background 0.15s",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-elev)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "transparent"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "var(--text)";
+            e.currentTarget.style.background = "var(--bg-elev)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "var(--text-dim)";
+            e.currentTarget.style.background = "transparent";
+          }}
         >
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-            <path d="M8.325 2.317a1.75 1.75 0 0 1 3.35 0l.243.98a1.25 1.25 0 0 0 1.768.806l.908-.455a1.75 1.75 0 0 1 2.369 2.369l-.455.908a1.25 1.25 0 0 0 .806 1.768l.98.243a1.75 1.75 0 0 1 0 3.35l-.98.243a1.25 1.25 0 0 0-.806 1.768l.455.908a1.75 1.75 0 0 1-2.369 2.369l-.908-.455a1.25 1.25 0 0 0-1.768.806l-.243.98a1.75 1.75 0 0 1-3.35 0l-.243-.98a1.25 1.25 0 0 0-1.768-.806l-.908.455a1.75 1.75 0 0 1-2.369-2.369l.455-.908a1.25 1.25 0 0 0-.806-1.768l-.98-.243a1.75 1.75 0 0 1 0-3.35l.98-.243a1.25 1.25 0 0 0 .806-1.768l-.455-.908a1.75 1.75 0 0 1 2.369-2.369l.908.455a1.25 1.25 0 0 0 1.768-.806l.243-.98Z" stroke="currentColor" strokeWidth="1.5" />
-            <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
+          <CogIcon size={16} />
         </button>
+        <WatchTimeCounter
+          todaySeconds={todaySeconds}
+          weekSeconds={weekSeconds}
+        />
       </div>
     </div>
   );
@@ -809,9 +816,21 @@ export default function SearchScreen({
   return (
     <>
       {topbar}
-      <div className="app__main">
+      <div className="app__main" style={{ position: "relative" }}>
         <div
           style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            zIndex: 0,
+            background:
+              "radial-gradient(ellipse 720px 520px at 50% 38%, rgba(255,68,68,0.10) 0%, rgba(255,68,68,0.04) 35%, transparent 70%)",
+          }}
+        />
+        <div
+          style={{
+            position: "relative",
+            zIndex: 1,
             width: "100%",
             maxWidth: 620,
             display: "flex",
@@ -820,7 +839,12 @@ export default function SearchScreen({
             gap: 0,
           }}
         >
-          <div style={{ marginBottom: 44 }}>
+          <div
+            style={{
+              marginBottom: 44,
+              animation: "rowIn 0.5s var(--ease) both",
+            }}
+          >
             <Logo size="xl" />
           </div>
           {allTags.length > 0 && (
@@ -831,6 +855,7 @@ export default function SearchScreen({
                 gap: 8,
                 marginBottom: 20,
                 justifyContent: "center",
+                animation: "rowIn 0.5s var(--ease) 80ms both",
               }}
             >
               {allTags.map((tag) => {
@@ -849,12 +874,18 @@ export default function SearchScreen({
                       color: s.color,
                       background: s.background,
                       cursor: "pointer",
-                      transition: "opacity 0.15s",
+                      transition:
+                        "transform 0.18s var(--ease), filter 0.18s var(--ease)",
+                      willChange: "transform",
                     }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.opacity = "0.8")
-                    }
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.filter = "brightness(1.2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "";
+                      e.currentTarget.style.filter = "";
+                    }}
                   >
                     #{tag}
                   </button>
@@ -864,7 +895,10 @@ export default function SearchScreen({
           )}
           <form
             onSubmit={handleSubmit}
-            style={{ width: "100%" }}
+            style={{
+              width: "100%",
+              animation: "rowIn 0.5s var(--ease) 160ms both",
+            }}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
           >
@@ -892,14 +926,16 @@ export default function SearchScreen({
                   padding: "18px 52px",
                   background: focused ? "var(--bg-card)" : "var(--bg-elev)",
                   border: `1px solid ${focused ? "var(--accent)" : "var(--border)"}`,
-                  borderRadius: 12,
+                  borderRadius: 14,
                   color: "var(--text)",
                   fontSize: 16,
                   fontFamily: "var(--font-sans)",
                   outline: "none",
-                  boxShadow: focused ? "0 0 0 3px var(--accent-ring)" : "none",
+                  boxShadow: focused
+                    ? "0 0 0 3px var(--accent-ring), 0 12px 32px -8px rgba(255,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.05)"
+                    : "inset 0 1px 0 rgba(255,255,255,0.03)",
                   transition:
-                    "background 0.2s, border-color 0.2s, box-shadow 0.2s",
+                    "background 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.25s var(--ease)",
                 }}
               />
               <span
@@ -920,7 +956,13 @@ export default function SearchScreen({
               </span>
             </div>
           </form>
-          <div style={{ width: "100%", marginTop: 8 }}>
+          <div
+            style={{
+              width: "100%",
+              marginTop: 8,
+              animation: "rowIn 0.5s var(--ease) 240ms both",
+            }}
+          >
             <div
               style={{
                 height: 3,
