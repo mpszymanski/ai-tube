@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /b \"C:\\\\Users\\\\mszym\\\\Documents\\\\Code\\\\ai-tube\")",
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(cmd.exe /c \"where cargo\")",
+      "Bash(cmd.exe /c \"cargo --version\")"
+    ]
+  }
+}
