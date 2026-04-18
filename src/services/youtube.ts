@@ -34,6 +34,29 @@ async function fetchVideoDetails(
   return map;
 }
 
+async function fetchChannelThumbnails(channelIds: string[], apiKey: string): Promise<Map<string, string>> {
+  if (channelIds.length === 0) return new Map();
+  const url = new URL("https://www.googleapis.com/youtube/v3/channels");
+  url.searchParams.set("part", "snippet");
+  url.searchParams.set("id", channelIds.join(","));
+  url.searchParams.set("key", apiKey);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) return new Map();
+
+  const data = await res.json();
+  const map = new Map<string, string>();
+  for (const item of data.items ?? []) {
+    const thumb = (
+      item.snippet?.thumbnails?.default?.url ??
+      item.snippet?.thumbnails?.medium?.url ??
+      ""
+    ).replace(/^\/\//, "https://");
+    map.set(item.id, thumb);
+  }
+  return map;
+}
+
 export async function searchChannels(name: string, apiKey: string): Promise<ChannelResult[]> {
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.searchParams.set("part", "snippet");
@@ -59,7 +82,11 @@ export async function searchChannels(name: string, apiKey: string): Promise<Chan
   }));
 }
 
-export async function getChannelLatestVideos(channelId: string, apiKey: string): Promise<VideoResult[]> {
+export async function getChannelLatestVideos(
+  channelId: string,
+  apiKey: string,
+  channelThumbnailUrl?: string,
+): Promise<VideoResult[]> {
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.searchParams.set("part", "snippet");
   url.searchParams.set("type", "video");
@@ -87,6 +114,8 @@ export async function getChannelLatestVideos(channelId: string, apiKey: string):
       title: decodeHtmlEntities(item.snippet.title),
       thumbnailUrl: item.snippet.thumbnails.medium.url,
       channelTitle: d?.channelTitle ?? item.snippet.channelTitle ?? "",
+      channelId,
+      channelThumbnailUrl: channelThumbnailUrl ?? "",
       publishedAt: d?.publishedAt ?? item.snippet.publishedAt ?? "",
       duration: d?.duration ?? "",
       viewCount: d?.viewCount ?? "",
@@ -114,14 +143,22 @@ export async function searchYouTube(query: string, apiKey: string, channelId?: s
 
   const details = videoIds.length > 0 ? await fetchVideoDetails(videoIds, apiKey) : new Map();
 
+  const uniqueChannelIds = [...new Set(
+    items.map((item: any) => item.snippet?.channelId).filter(Boolean) as string[]
+  )];
+  const channelThumbs = await fetchChannelThumbnails(uniqueChannelIds, apiKey);
+
   return items.map((item: any): VideoResult => {
     const id = item.id.videoId;
     const d = details.get(id);
+    const itemChannelId: string = item.snippet?.channelId ?? "";
     return {
       videoId: id,
       title: decodeHtmlEntities(item.snippet.title),
       thumbnailUrl: item.snippet.thumbnails.medium.url,
       channelTitle: d?.channelTitle ?? item.snippet.channelTitle ?? "",
+      channelId: itemChannelId || undefined,
+      channelThumbnailUrl: itemChannelId ? (channelThumbs.get(itemChannelId) ?? "") : "",
       publishedAt: d?.publishedAt ?? item.snippet.publishedAt ?? "",
       duration: d?.duration ?? "",
       viewCount: d?.viewCount ?? "",

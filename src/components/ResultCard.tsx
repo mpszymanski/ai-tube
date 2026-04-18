@@ -49,8 +49,6 @@ export default function ResultCard({ video, onClick, animationDelay }: ResultCar
   const views = formatViewCount(video.viewCount);
   const posted = formatPublishedAt(video.publishedAt);
 
-  const metaParts = [video.channelTitle, views, posted].filter(Boolean);
-
   return (
     <button
       onClick={onClick}
@@ -123,16 +121,22 @@ export default function ResultCard({ video, onClick, animationDelay }: ResultCar
         >
           {video.title}
         </p>
-        {metaParts.length > 0 && (
-          <p style={{ fontSize: 12, color: "var(--text-mute)", marginTop: 8 }}>
-            {metaParts.map((part, i) => (
-              <span key={i}>
-                {i > 0 && <span style={{ margin: "0 3px", color: "var(--border-strong)" }}>·</span>}
-                <span style={i === 0 ? { color: "var(--text-dim)" } : {}}>{part}</span>
-              </span>
-            ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
+          {video.channelThumbnailUrl && (
+            <img
+              src={video.channelThumbnailUrl}
+              alt=""
+              referrerPolicy="no-referrer"
+              style={{ width: 16, height: 16, borderRadius: "50%", flexShrink: 0, objectFit: "cover" }}
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+          )}
+          <p style={{ fontSize: 12, color: "var(--text-mute)", margin: 0 }}>
+            <span style={{ color: "var(--text-dim)" }}>{video.channelTitle}</span>
+            {views && <><span style={{ margin: "0 3px", color: "var(--border-strong)" }}>·</span><span>{views}</span></>}
+            {posted && <><span style={{ margin: "0 3px", color: "var(--border-strong)" }}>·</span><span>{posted}</span></>}
           </p>
-        )}
+        </div>
       </div>
     </button>
   );

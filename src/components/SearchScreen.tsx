@@ -3,12 +3,14 @@ import { VideoResult, ChannelResult, ChannelResultWithVideos } from "../types";
 import { getConfig } from "../services/config";
 import { analyzeQuery, classifyClickbait } from "../services/lmStudio";
 import { searchYouTube, searchChannels, getChannelLatestVideos } from "../services/youtube";
+import { isSubscribed, subscribe, unsubscribe } from "../services/subscriptions";
 import Logo from "./Logo";
 import WatchTimeCounter from "./WatchTimeCounter";
 
 interface SearchScreenProps {
   onSearch(results: VideoResult[], query: string): void;
   onChannelSearch(data: ChannelResultWithVideos, query: string): void;
+  onSubscriptions(): void;
   todaySeconds: number;
   weekSeconds: number;
 }
@@ -48,7 +50,64 @@ function SearchIcon({ active }: { active: boolean }) {
   );
 }
 
-export default function SearchScreen({ onSearch, onChannelSearch, todaySeconds, weekSeconds }: SearchScreenProps) {
+function SubscriptionsIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+      <rect x="1" y="3" width="14" height="2" rx="1" fill="currentColor" />
+      <rect x="1" y="7" width="14" height="2" rx="1" fill="currentColor" />
+      <rect x="1" y="11" width="14" height="2" rx="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ChannelSubscribeButton({ channel }: { channel: ChannelResult }) {
+  const [subscribed, setSubscribed] = useState(() => isSubscribed(channel.channelId));
+
+  function handleClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (subscribed) {
+      unsubscribe(channel.channelId);
+      setSubscribed(false);
+    } else {
+      subscribe(channel);
+      setSubscribed(true);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      style={{
+        flexShrink: 0,
+        background: subscribed ? "transparent" : "var(--accent)",
+        border: subscribed ? "1px solid var(--border-strong)" : "1px solid transparent",
+        borderRadius: "var(--radius-sm)",
+        color: subscribed ? "var(--text-dim)" : "#fff",
+        fontSize: 11,
+        fontFamily: "var(--font-mono)",
+        padding: "4px 10px",
+        cursor: "pointer",
+        transition: "background 0.15s, color 0.15s, border-color 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        if (subscribed) {
+          e.currentTarget.style.borderColor = "var(--accent)";
+          e.currentTarget.style.color = "var(--accent)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (subscribed) {
+          e.currentTarget.style.borderColor = "var(--border-strong)";
+          e.currentTarget.style.color = "var(--text-dim)";
+        }
+      }}
+    >
+      {subscribed ? "Subscribed" : "Subscribe"}
+    </button>
+  );
+}
+
+export default function SearchScreen({ onSearch, onChannelSearch, onSubscriptions, todaySeconds, weekSeconds }: SearchScreenProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [inputValue, setInputValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -57,8 +116,8 @@ export default function SearchScreen({ onSearch, onChannelSearch, todaySeconds, 
   // Thinking rows
   const [row1Visible, setRow1Visible] = useState(false);
   const [row2Visible, setRow2Visible] = useState(false);
-  const [row3Visible, setRow3Visible] = useState(false); // Channel row
-  const [row4Visible, setRow4Visible] = useState(false); // Search row
+  const [row3Visible, setRow3Visible] = useState(false);
+  const [row4Visible, setRow4Visible] = useState(false);
   const [originalQuery, setOriginalQuery] = useState("");
   const [rephrasedText, setRephrasedText] = useState("");
   const [typewriterDone, setTypewriterDone] = useState(false);
@@ -99,7 +158,7 @@ export default function SearchScreen({ onSearch, onChannelSearch, todaySeconds, 
     const searchStart = Date.now();
 
     try {
-      const allResults = await getChannelLatestVideos(channel.channelId, config.youtubeApiKey);
+      const allResults = await getChannelLatestVideos(channel.channelId, config.youtubeApiKey, channel.thumbnailUrl);
       const titles = allResults.map((r) => r.title);
       const classified = await classifyClickbait(titles, config.lmStudioUrl);
       const clickbaitMap = new Map(classified.map((item) => [item.title, item.clickbait]));
@@ -181,7 +240,6 @@ export default function SearchScreen({ onSearch, onChannelSearch, todaySeconds, 
 
     const config = getConfig();
 
-    // Step 1: AI analyzes the query
     let videoQuery = query;
     let intent: "videos" | "channel" | "channel-videos" = "videos";
     let channelName: string | undefined;
@@ -198,7 +256,6 @@ export default function SearchScreen({ onSearch, onChannelSearch, todaySeconds, 
     setPendingVideoQuery(videoQuery);
     setPendingIntent(intent);
 
-    // Step 2: Channel lookup (if AI detected one)
     let resolvedChannelId: string | undefined;
     let resolvedChannel: ChannelResult | undefined;
 
@@ -217,7 +274,6 @@ export default function SearchScreen({ onSearch, onChannelSearch, todaySeconds, 
           setPhase("channel-confirm");
           return;
         } else {
-          // 0 results — fall back to global video search silently
           setChannelRowDone(true);
         }
       } catch {
@@ -225,7 +281,6 @@ export default function SearchScreen({ onSearch, onChannelSearch, todaySeconds, 
       }
     }
 
-    // Step 3: Search based on intent
     setRow4Visible(true);
     if (intent === "channel" && resolvedChannel) {
       await doChannelSearch(resolvedChannel, query);
@@ -266,8 +321,31 @@ export default function SearchScreen({ onSearch, onChannelSearch, todaySeconds, 
     flexShrink: 0,
   };
 
+  const subsBtnStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    background: "transparent",
+    border: "none",
+    color: "var(--text-dim)",
+    fontSize: 13,
+    padding: "8px 12px 8px 8px",
+    borderRadius: "var(--radius-sm)",
+    cursor: "pointer",
+    transition: "color 0.15s, background 0.15s",
+  };
+
   const topbar = (
-    <div className="app__topbar" style={{ justifyContent: "flex-end" }}>
+    <div className="app__topbar" style={{ justifyContent: "space-between" }}>
+      <button
+        onClick={onSubscriptions}
+        style={subsBtnStyle}
+        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg-elev)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "transparent"; }}
+      >
+        <SubscriptionsIcon />
+        Subscriptions
+      </button>
       <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
     </div>
   );
@@ -386,27 +464,46 @@ export default function SearchScreen({ onSearch, onChannelSearch, todaySeconds, 
                         </span>
                       )}
                     </div>
+                    <ChannelSubscribeButton channel={ch} />
                   </button>
                 ))}
               </div>
             </div>
-            <button
-              onClick={() => handleChannelSelect(null)}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "var(--text-mute)",
-                fontSize: 13,
-                cursor: "pointer",
-                padding: "4px 0",
-                textAlign: "left",
-                fontFamily: "var(--font-mono)",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-mute)")}
-            >
-              Search all of YouTube instead →
-            </button>
+            <div style={{ display: "flex", gap: 16 }}>
+              <button
+                onClick={() => setPhase("idle")}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-mute)",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  padding: "4px 0",
+                  fontFamily: "var(--font-mono)",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-mute)")}
+              >
+                ← Back
+              </button>
+              <button
+                onClick={() => handleChannelSelect(null)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-mute)",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  padding: "4px 0",
+                  textAlign: "left",
+                  fontFamily: "var(--font-mono)",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-mute)")}
+              >
+                Search all of YouTube instead →
+              </button>
+            </div>
           </div>
         </div>
       </>

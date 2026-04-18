@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChannelResultWithVideos } from "../types";
+import { isSubscribed, subscribe, unsubscribe } from "../services/subscriptions";
 import ResultCard from "./ResultCard";
 import WatchTimeCounter from "./WatchTimeCounter";
 import Toggle from "./Toggle";
@@ -25,8 +26,19 @@ const delays = ["0.05s", "0.10s", "0.15s", "0.20s", "0.25s", "0.30s", "0.35s", "
 
 export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, onSelect, onBack }: ChannelResultsScreenProps) {
   const [filterOn, setFilterOn] = useState(true);
+  const [subscribed, setSubscribed] = useState(() => isSubscribed(data.channel.channelId));
   const { channel, latestVideos } = data;
   const visibleVideos = filterOn ? latestVideos.filter((r) => !r.isClickbait) : latestVideos;
+
+  function handleSubscribe() {
+    if (subscribed) {
+      unsubscribe(channel.channelId);
+      setSubscribed(false);
+    } else {
+      subscribe(channel);
+      setSubscribed(true);
+    }
+  }
 
   const backBtnStyle: React.CSSProperties = {
     display: "flex",
@@ -99,6 +111,35 @@ export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, 
                 </span>
               )}
             </div>
+            <button
+              onClick={handleSubscribe}
+              style={{
+                flexShrink: 0,
+                background: subscribed ? "transparent" : "var(--accent)",
+                border: subscribed ? "1px solid var(--border-strong)" : "1px solid transparent",
+                borderRadius: "var(--radius-sm)",
+                color: subscribed ? "var(--text-dim)" : "#fff",
+                fontSize: 12,
+                fontFamily: "var(--font-mono)",
+                padding: "6px 14px",
+                cursor: "pointer",
+                transition: "background 0.15s, color 0.15s, border-color 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                if (subscribed) {
+                  e.currentTarget.style.borderColor = "var(--accent)";
+                  e.currentTarget.style.color = "var(--accent)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (subscribed) {
+                  e.currentTarget.style.borderColor = "var(--border-strong)";
+                  e.currentTarget.style.color = "var(--text-dim)";
+                }
+              }}
+            >
+              {subscribed ? "Subscribed" : "Subscribe"}
+            </button>
           </div>
 
           {/* Videos header */}

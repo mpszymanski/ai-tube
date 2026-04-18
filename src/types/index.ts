@@ -3,6 +3,8 @@ export interface VideoResult {
   title: string;
   thumbnailUrl: string;
   channelTitle: string;
+  channelId?: string;
+  channelThumbnailUrl?: string;
   publishedAt: string;
   duration: string;
   viewCount: string;
@@ -18,7 +20,7 @@ export interface AppConfig {
   youtubeApiKey: string;
 }
 
-export type AppScreen = "setup" | "search" | "results" | "channel-results" | "player";
+export type AppScreen = "setup" | "search" | "results" | "channel-results" | "player" | "subscriptions";
 
 export type SearchIntent = "videos" | "channel" | "channel-videos";
 

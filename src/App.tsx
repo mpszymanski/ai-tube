@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
-import { AppScreen, VideoResult, ChannelResultWithVideos } from "./types";
-import { isConfigured } from "./services/config";
+import { AppScreen, VideoResult, ChannelResult, ChannelResultWithVideos } from "./types";
+import { isConfigured, getConfig } from "./services/config";
 import { getTodaySeconds, getWeekSeconds } from "./services/watchTime";
+import { getChannelLatestVideos } from "./services/youtube";
+import { classifyClickbait } from "./services/lmStudio";
 import SetupScreen from "./components/SetupScreen";
 import SearchScreen from "./components/SearchScreen";
 import ResultsList from "./components/ResultsList";
 import PlayerScreen from "./components/PlayerScreen";
 import ChannelResultsScreen from "./components/ChannelResultsScreen";
+import SubscriptionsScreen from "./components/SubscriptionsScreen";
 
 export default function App() {
   const [screen, setScreen] = useState<AppScreen>(() =>
@@ -63,6 +66,22 @@ export default function App() {
     }
   }
 
+  async function handleChannelSelectFromSubscriptions(channel: ChannelResult) {
+    const config = getConfig();
+    try {
+      const allResults = await getChannelLatestVideos(channel.channelId, config.youtubeApiKey, channel.thumbnailUrl);
+      const titles = allResults.map((r) => r.title);
+      const classified = await classifyClickbait(titles, config.lmStudioUrl);
+      const clickbaitMap = new Map(classified.map((item) => [item.title, item.clickbait]));
+      const latestVideos = allResults.map((r) => ({ ...r, isClickbait: clickbaitMap.get(r.title) ?? false }));
+      setChannelData({ channel, latestVideos });
+      setQuery(channel.title);
+      setScreen("channel-results");
+    } catch {
+      // If fetch fails, stay on subscriptions screen
+    }
+  }
+
   if (screen === "setup") {
     return (
       <div className="app">
@@ -77,6 +96,7 @@ export default function App() {
         <SearchScreen
           onSearch={handleSearch}
           onChannelSearch={handleChannelSearch}
+          onSubscriptions={() => setScreen("subscriptions")}
           todaySeconds={todaySeconds}
           weekSeconds={weekSeconds}
         />
@@ -118,6 +138,19 @@ export default function App() {
         weekSeconds={weekSeconds}
         onBack={handleBackFromPlayer}
       />
+    );
+  }
+
+  if (screen === "subscriptions") {
+    return (
+      <div className="app">
+        <SubscriptionsScreen
+          todaySeconds={todaySeconds}
+          weekSeconds={weekSeconds}
+          onBack={() => setScreen("search")}
+          onChannelSelect={handleChannelSelectFromSubscriptions}
+        />
+      </div>
     );
   }
 

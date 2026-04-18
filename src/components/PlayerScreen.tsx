@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
-import { VideoResult } from "../types";
+import { useEffect, useRef, useState } from "react";
+import { VideoResult, ChannelResult } from "../types";
 import { addSeconds } from "../services/watchTime";
+import { isSubscribed, subscribe, unsubscribe } from "../services/subscriptions";
 import WatchTimeCounter from "./WatchTimeCounter";
 
 declare global {
@@ -122,7 +123,28 @@ export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack 
     transition: "color 0.15s, background 0.15s",
   };
 
-  const metaParts = [video.channelTitle, formatViewCount(video.viewCount), formatPublishedAt(video.publishedAt)].filter(Boolean);
+  const [subscribed, setSubscribed] = useState(() =>
+    video.channelId ? isSubscribed(video.channelId) : false
+  );
+
+  function handleSubscribe() {
+    if (!video.channelId) return;
+    const channel: ChannelResult = {
+      channelId: video.channelId,
+      title: video.channelTitle,
+      thumbnailUrl: video.channelThumbnailUrl ?? "",
+      description: "",
+    };
+    if (subscribed) {
+      unsubscribe(video.channelId);
+      setSubscribed(false);
+    } else {
+      subscribe(channel);
+      setSubscribed(true);
+    }
+  }
+
+  const metaParts = [formatViewCount(video.viewCount), formatPublishedAt(video.publishedAt)].filter(Boolean);
 
   return (
     <div className="app">
@@ -165,16 +187,65 @@ export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack 
             <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.015em", color: "var(--text)" }}>
               {video.title}
             </h1>
-            {metaParts.length > 0 && (
-              <p style={{ fontSize: 13, color: "var(--text-dim)", marginTop: 6 }}>
-                {metaParts.map((part, i) => (
-                  <span key={i}>
-                    {i > 0 && <span style={{ margin: "0 3px", color: "var(--border-strong)" }}>·</span>}
-                    {part}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10, gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                {video.channelThumbnailUrl && (
+                  <img
+                    src={video.channelThumbnailUrl}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, objectFit: "cover" }}
+                    onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  />
+                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {video.channelTitle}
                   </span>
-                ))}
-              </p>
-            )}
+                  {metaParts.length > 0 && (
+                    <span style={{ fontSize: 12, color: "var(--text-mute)" }}>
+                      {metaParts.map((part, i) => (
+                        <span key={i}>
+                          {i > 0 && <span style={{ margin: "0 3px", color: "var(--border-strong)" }}>·</span>}
+                          {part}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {video.channelId && (
+                <button
+                  onClick={handleSubscribe}
+                  style={{
+                    flexShrink: 0,
+                    background: subscribed ? "transparent" : "var(--accent)",
+                    border: subscribed ? "1px solid var(--border-strong)" : "1px solid transparent",
+                    borderRadius: "var(--radius-sm)",
+                    color: subscribed ? "var(--text-dim)" : "#fff",
+                    fontSize: 12,
+                    fontFamily: "var(--font-mono)",
+                    padding: "6px 14px",
+                    cursor: "pointer",
+                    transition: "background 0.15s, color 0.15s, border-color 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (subscribed) {
+                      e.currentTarget.style.borderColor = "var(--accent)";
+                      e.currentTarget.style.color = "var(--accent)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (subscribed) {
+                      e.currentTarget.style.borderColor = "var(--border-strong)";
+                      e.currentTarget.style.color = "var(--text-dim)";
+                    }
+                  }}
+                >
+                  {subscribed ? "Subscribed" : "Subscribe"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
