@@ -1,7 +1,7 @@
 # AI Tube — Progress Tracker
 
 **Started:** 2026-04-18  
-**Last updated:** 2026-04-18
+**Last updated:** 2026-04-18 (Tasks 1–5 complete)
 
 ---
 
@@ -10,11 +10,11 @@
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | 0 | Project Scaffolding | ✅ Done | App builds and runs; first build compiled 391 Rust crates |
-| 1 | Type Definitions | ⬜ Not started | |
-| 2 | LM Studio Service | ⬜ Not started | |
-| 3 | YouTube Service | ⬜ Not started | |
-| 4 | Watch Time Service | ⬜ Not started | |
-| 5 | Config Service | ⬜ Not started | |
+| 1 | Type Definitions | ✅ Done | |
+| 2 | LM Studio Service | ✅ Done | 15s AbortController timeout included |
+| 3 | YouTube Service | ✅ Done | HTML entity decoding included |
+| 4 | Watch Time Service | ✅ Done | |
+| 5 | Config Service | ✅ Done | |
 | 6 | Setup Screen | ⬜ Not started | |
 | 7 | Watch Time Counter | ⬜ Not started | |
 | 8 | Search Screen | ⬜ Not started | |
