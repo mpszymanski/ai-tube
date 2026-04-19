@@ -57,20 +57,12 @@ export async function analyzeQuery(
   if (!parsed || typeof parsed !== "object") {
     return { videoQuery: userInput, intent: "videos" };
   }
+  const p = parsed as Record<string, unknown>;
   const validIntents = ["videos", "channel", "channel-videos"];
   return {
-    videoQuery:
-      typeof (parsed as any).videoQuery === "string" && (parsed as any).videoQuery
-        ? (parsed as any).videoQuery
-        : userInput,
-    intent:
-      typeof (parsed as any).intent === "string" && validIntents.includes((parsed as any).intent)
-        ? (parsed as any).intent
-        : "videos",
-    channelName:
-      typeof (parsed as any).channelName === "string" && (parsed as any).channelName
-        ? (parsed as any).channelName
-        : undefined,
+    videoQuery: typeof p.videoQuery === "string" && p.videoQuery ? p.videoQuery : userInput,
+    intent: typeof p.intent === "string" && validIntents.includes(p.intent) ? (p.intent as "videos" | "channel" | "channel-videos") : "videos",
+    channelName: typeof p.channelName === "string" && p.channelName ? p.channelName : undefined,
   };
 }
 
@@ -103,7 +95,7 @@ export async function classifyClickbait(
   apiUrl: string,
 ): Promise<{ title: string; clickbait: boolean }[]> {
   const fallback = titles.map((title) => ({ title, clickbait: false }));
-  const parsed = await callLmStudio<{ title: string; clickbait: boolean }[] | null>(
+  const parsed = await callLmStudio<unknown>(
     apiUrl,
     SYSTEM_PROMPT_CLICKBAIT,
     JSON.stringify(titles),
@@ -111,5 +103,11 @@ export async function classifyClickbait(
     null,
   );
   if (!Array.isArray(parsed)) return fallback;
-  return parsed;
+  const valid = parsed.filter(
+    (item): item is { title: string; clickbait: boolean } =>
+      typeof item === "object" && item !== null &&
+      typeof (item as Record<string, unknown>).title === "string" &&
+      typeof (item as Record<string, unknown>).clickbait === "boolean",
+  );
+  return valid.length > 0 ? valid : fallback;
 }

@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { CogIcon } from "../ui/Icons";
 import { VideoResult, ChannelResult, ChannelResultWithVideos } from "../../types";
 import { getConfig } from "../../services/config";
 import {
@@ -20,6 +19,7 @@ import {
 } from "../../services/taggedChannels";
 import { TopicGroup } from "../../types";
 import WatchTimeCounter from "../widgets/WatchTimeCounter";
+import SettingsButton from "../ui/SettingsButton";
 import { getUsage } from "../../services/apiUsage";
 import { useWatchLimit } from "../../context/WatchLimitContext";
 import SearchThinkingView from "./SearchThinkingView";
@@ -57,7 +57,7 @@ export default function SearchScreen({
   onChannelSearch,
   onSubscriptions,
 }: SearchScreenProps) {
-  const { isLocked, onSettings } = useWatchLimit();
+  const { isLocked } = useWatchLimit();
   const [phase, setPhase] = useState<Phase>("idle");
   const [inputValue, setInputValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -421,32 +421,7 @@ export default function SearchScreen({
         Subscriptions
       </button>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <button
-          onClick={onSettings}
-          title="Settings"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "transparent",
-            border: "none",
-            color: "var(--text-dim)",
-            padding: 8,
-            borderRadius: "var(--radius-sm)",
-            cursor: "pointer",
-            transition: "color 0.15s, background 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--text)";
-            e.currentTarget.style.background = "var(--bg-elev)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--text-dim)";
-            e.currentTarget.style.background = "transparent";
-          }}
-        >
-          <CogIcon size={16} />
-        </button>
+        <SettingsButton />
         <WatchTimeCounter />
       </div>
     </div>
