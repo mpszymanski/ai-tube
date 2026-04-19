@@ -10,14 +10,22 @@ const sizes = {
 
 export default function Logo({ size }: LogoProps) {
   const s = sizes[size];
+  const gradId = `logo-grad-${size}`;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <svg
         width={s.markW}
         height={s.markH}
         viewBox={`0 0 ${s.markW} ${s.markH}`}
-        style={{ borderRadius: s.markRadius, background: "var(--accent)", flexShrink: 0 }}
+        style={{ borderRadius: s.markRadius, flexShrink: 0 }}
       >
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#9b7aff" />
+            <stop offset="100%" stopColor="#5b3dd6" />
+          </linearGradient>
+        </defs>
+        <rect width={s.markW} height={s.markH} rx={s.markRadius} fill={`url(#${gradId})`} />
         <svg
           x={(s.markW - s.glyphSize) / 2}
           y={(s.markH - s.glyphSize) / 2}

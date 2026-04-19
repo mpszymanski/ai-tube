@@ -8,10 +8,11 @@
   --text:          #e8e8e8;
   --text-dim:      #9a9a9a;
   --text-mute:     #6b6b6b;
-  --accent:        #ff4444;
-  --accent-dim:    #c53030;
-  --accent-soft:   rgba(255, 68, 68, 0.12);
-  --accent-ring:   rgba(255, 68, 68, 0.28);
+  --accent:        #7c5cfa;
+  --accent-dim:    #5b3dd6;
+  --accent-soft:   rgba(124, 92, 250, 0.12);
+  --accent-ring:   rgba(124, 92, 250, 0.28);
+  --accent-grad:   linear-gradient(135deg, #9b7aff 0%, #5b3dd6 100%);
   --success:       #4ade80;
   --warn:          #fbbf24;
 

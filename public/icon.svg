@@ -1,6 +1,18 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <!-- Red YouTube-style rounded rectangle -->
-  <rect x="76" y="156" width="360" height="200" rx="44" fill="#ff4444"/>
-  <!-- White play triangle -->
-  <polygon points="208,186 208,326 352,256" fill="white"/>
+  <defs>
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9b7aff"/>
+      <stop offset="100%" stop-color="#4a28c4"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="112" fill="url(#bg-grad)"/>
+  <!-- Subtle top shine for depth -->
+  <rect width="512" height="256" rx="112" fill="url(#shine)"/>
+  <!-- White play triangle, centered and large -->
+  <polygon points="168,152 168,360 384,256" fill="white" opacity="0.95"/>
 </svg>
