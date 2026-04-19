@@ -18,6 +18,8 @@ export interface WatchTimeData {
 export interface AppConfig {
   lmStudioUrl: string;
   youtubeApiKey: string;
+  dailyLimitSeconds: number;
+  weeklyLimitSeconds: number;
 }
 
 export type AppScreen = "setup" | "search" | "results" | "channel-results" | "player" | "subscriptions" | "grouped-results";

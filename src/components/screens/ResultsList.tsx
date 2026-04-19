@@ -11,17 +11,20 @@ interface ResultsListProps {
   query: string;
   todaySeconds: number;
   weekSeconds: number;
+  dailyLimitSeconds: number;
+  weeklyLimitSeconds: number;
+  isLocked: boolean;
   onSelect(videoId: string): void;
   onBack(): void;
   onSettings(): void;
 }
 
-export default function ResultsList({ results, query, todaySeconds, weekSeconds, onSelect, onBack, onSettings }: ResultsListProps) {
+export default function ResultsList({ results, query, todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSelect, onBack, onSettings }: ResultsListProps) {
   const [filterOn, setFilterOn] = useState(true);
   const visibleResults = filterOn ? results.filter((r) => !r.isClickbait) : results;
 
   return (
-    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds}>
+    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds} dailyLimitSeconds={dailyLimitSeconds} weeklyLimitSeconds={weeklyLimitSeconds}>
       <div style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
           <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--text-dim)" }}>
@@ -49,6 +52,7 @@ export default function ResultsList({ results, query, todaySeconds, weekSeconds,
               video={video}
               onClick={() => onSelect(video.videoId)}
               animationDelay={ANIMATION_DELAYS[i] ?? "0.05s"}
+              disabled={isLocked}
             />
           ))
         )}

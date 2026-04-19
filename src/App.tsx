@@ -120,6 +120,9 @@ export default function App() {
     }
   }
 
+  const { dailyLimitSeconds, weeklyLimitSeconds } = getConfig();
+  const isLocked = todaySeconds >= dailyLimitSeconds || weekSeconds >= weeklyLimitSeconds;
+
   if (!ready) {
     return <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }} />;
   }
@@ -131,6 +134,7 @@ export default function App() {
         <SetupScreen
           onSave={() => setScreen("search")}
           onBack={wasConfigured ? () => setScreen("search") : undefined}
+          isLocked={isLocked}
         />
       </div>
     );
@@ -147,6 +151,9 @@ export default function App() {
           onSettings={() => setScreen("setup")}
           todaySeconds={todaySeconds}
           weekSeconds={weekSeconds}
+          dailyLimitSeconds={dailyLimitSeconds}
+          weeklyLimitSeconds={weeklyLimitSeconds}
+          isLocked={isLocked}
         />
       </div>
     );
@@ -159,6 +166,9 @@ export default function App() {
         query={query}
         todaySeconds={todaySeconds}
         weekSeconds={weekSeconds}
+        dailyLimitSeconds={dailyLimitSeconds}
+        weeklyLimitSeconds={weeklyLimitSeconds}
+        isLocked={isLocked}
         onSelect={handleSelect}
         onBack={handleBackFromResults}
         onSettings={() => setScreen("setup")}
@@ -173,6 +183,9 @@ export default function App() {
         query={query}
         todaySeconds={todaySeconds}
         weekSeconds={weekSeconds}
+        dailyLimitSeconds={dailyLimitSeconds}
+        weeklyLimitSeconds={weeklyLimitSeconds}
+        isLocked={isLocked}
         onSelect={handleSelect}
         onBack={handleBackFromResults}
         onSettings={() => setScreen("setup")}
@@ -187,6 +200,9 @@ export default function App() {
         query={query}
         todaySeconds={todaySeconds}
         weekSeconds={weekSeconds}
+        dailyLimitSeconds={dailyLimitSeconds}
+        weeklyLimitSeconds={weeklyLimitSeconds}
+        isLocked={isLocked}
         onSelect={handleSelect}
         onBack={handleBackFromResults}
         onSettings={() => setScreen("setup")}
@@ -200,6 +216,8 @@ export default function App() {
         video={selectedVideo}
         todaySeconds={todaySeconds}
         weekSeconds={weekSeconds}
+        dailyLimitSeconds={dailyLimitSeconds}
+        weeklyLimitSeconds={weeklyLimitSeconds}
         onBack={handleBackFromPlayer}
         onSettings={() => setScreen("setup")}
       />
@@ -212,6 +230,9 @@ export default function App() {
         <SubscriptionsScreen
           todaySeconds={todaySeconds}
           weekSeconds={weekSeconds}
+          dailyLimitSeconds={dailyLimitSeconds}
+          weeklyLimitSeconds={weeklyLimitSeconds}
+          isLocked={isLocked}
           onBack={() => setScreen("search")}
           onChannelSelect={handleChannelSelectFromSubscriptions}
           onSettings={() => setScreen("setup")}

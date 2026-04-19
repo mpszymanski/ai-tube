@@ -8,12 +8,15 @@ import ScreenShell from "../layout/ScreenShell";
 interface SubscriptionsScreenProps {
   todaySeconds: number;
   weekSeconds: number;
+  dailyLimitSeconds: number;
+  weeklyLimitSeconds: number;
+  isLocked: boolean;
   onBack(): void;
   onChannelSelect(channel: ChannelResult): Promise<void>;
   onSettings(): void;
 }
 
-export default function SubscriptionsScreen({ todaySeconds, weekSeconds, onBack, onChannelSelect, onSettings }: SubscriptionsScreenProps) {
+export default function SubscriptionsScreen({ todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onBack, onChannelSelect, onSettings }: SubscriptionsScreenProps) {
   const [store, setStore] = useState<TaggedChannel[]>(() => getTaggedChannels());
   const [loadingChannelId, setLoadingChannelId] = useState<string | null>(null);
 
@@ -25,7 +28,7 @@ export default function SubscriptionsScreen({ todaySeconds, weekSeconds, onBack,
   const allTags = [...new Set(store.flatMap((ch) => ch.tags))].sort();
 
   async function handleBrowse(ch: ChannelResult) {
-    if (loadingChannelId) return;
+    if (loadingChannelId || isLocked) return;
     setLoadingChannelId(ch.channelId);
     try {
       await onChannelSelect(ch);
@@ -35,7 +38,7 @@ export default function SubscriptionsScreen({ todaySeconds, weekSeconds, onBack,
   }
 
   return (
-    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds}>
+    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds} dailyLimitSeconds={dailyLimitSeconds} weeklyLimitSeconds={weeklyLimitSeconds}>
       <div style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 24 }}>
           <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Subscriptions
@@ -113,7 +116,7 @@ export default function SubscriptionsScreen({ todaySeconds, weekSeconds, onBack,
                       </div>
                       <button
                         onClick={() => handleBrowse(ch)}
-                        disabled={!!loadingChannelId}
+                        disabled={!!loadingChannelId || isLocked}
                         style={{
                           flexShrink: 0,
                           display: "flex",
@@ -127,8 +130,8 @@ export default function SubscriptionsScreen({ todaySeconds, weekSeconds, onBack,
                           fontSize: 12,
                           fontFamily: "var(--font-mono)",
                           padding: "6px 14px",
-                          cursor: loadingChannelId ? "default" : "pointer",
-                          opacity: loadingChannelId && loadingChannelId !== ch.channelId ? 0.5 : 1,
+                          cursor: (loadingChannelId || isLocked) ? "not-allowed" : "pointer",
+                          opacity: isLocked ? 0.4 : (loadingChannelId && loadingChannelId !== ch.channelId ? 0.5 : 1),
                           transition: "opacity 0.15s",
                           minWidth: 64,
                         }}

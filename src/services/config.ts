@@ -6,6 +6,8 @@ import { getAdapter } from "./storage";
 const defaults: AppConfig = {
   lmStudioUrl: "http://localhost:1234",
   youtubeApiKey: "",
+  dailyLimitSeconds: 3600,
+  weeklyLimitSeconds: 14400,
 };
 
 let cache: AppConfig | null = null;

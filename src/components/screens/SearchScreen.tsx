@@ -35,6 +35,9 @@ interface SearchScreenProps {
   onSettings(): void;
   todaySeconds: number;
   weekSeconds: number;
+  dailyLimitSeconds: number;
+  weeklyLimitSeconds: number;
+  isLocked: boolean;
 }
 
 type Phase = "idle" | "thinking" | "channel-confirm";
@@ -86,6 +89,9 @@ export default function SearchScreen({
   onSettings,
   todaySeconds,
   weekSeconds,
+  dailyLimitSeconds,
+  weeklyLimitSeconds,
+  isLocked,
 }: SearchScreenProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [inputValue, setInputValue] = useState("");
@@ -322,6 +328,7 @@ export default function SearchScreen({
   }
 
   async function handleTagClick(tag: string) {
+    if (isLocked) return;
     const tagChannels = getChannelsByTag(tag);
     if (tagChannels.length === 0) return;
     setError(null);
@@ -340,6 +347,7 @@ export default function SearchScreen({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isLocked) return;
     const query = inputValue.trim();
     if (!query) return;
 
@@ -510,6 +518,8 @@ export default function SearchScreen({
         <WatchTimeCounter
           todaySeconds={todaySeconds}
           weekSeconds={weekSeconds}
+          dailyLimitSeconds={dailyLimitSeconds}
+          weeklyLimitSeconds={weeklyLimitSeconds}
         />
       </div>
     </div>
@@ -587,6 +597,8 @@ export default function SearchScreen({
         <WatchTimeCounter
           todaySeconds={todaySeconds}
           weekSeconds={weekSeconds}
+          dailyLimitSeconds={dailyLimitSeconds}
+          weeklyLimitSeconds={weeklyLimitSeconds}
         />
       </div>
     );
@@ -779,6 +791,7 @@ export default function SearchScreen({
                   <button
                     key={tag}
                     type="button"
+                    disabled={isLocked}
                     onClick={() => handleTagClick(tag)}
                     style={{
                       fontSize: 12,
@@ -788,16 +801,17 @@ export default function SearchScreen({
                       border: `1px solid ${s.borderColor}`,
                       color: s.color,
                       background: s.background,
-                      cursor: "pointer",
+                      cursor: isLocked ? "not-allowed" : "pointer",
+                      opacity: isLocked ? 0.45 : 1,
                       transition:
                         "transform 0.18s var(--ease), filter 0.18s var(--ease)",
                       willChange: "transform",
                     }}
-                    onMouseEnter={(e) => {
+                    onMouseEnter={isLocked ? undefined : (e) => {
                       e.currentTarget.style.transform = "translateY(-1px)";
                       e.currentTarget.style.filter = "brightness(1.2)";
                     }}
-                    onMouseLeave={(e) => {
+                    onMouseLeave={isLocked ? undefined : (e) => {
                       e.currentTarget.style.transform = "";
                       e.currentTarget.style.filter = "";
                     }}
@@ -833,20 +847,22 @@ export default function SearchScreen({
               <input
                 ref={inputRef}
                 type="text"
+                disabled={isLocked}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="What do you want to watch?"
+                placeholder={isLocked ? "Limit reached" : "What do you want to watch?"}
                 style={{
                   width: "100%",
                   padding: "18px 52px",
-                  background: focused ? "var(--bg-card)" : "var(--bg-elev)",
-                  border: `1px solid ${focused ? "var(--accent)" : "var(--border)"}`,
+                  background: isLocked ? "var(--bg-elev)" : (focused ? "var(--bg-card)" : "var(--bg-elev)"),
+                  border: `1px solid ${!isLocked && focused ? "var(--accent)" : "var(--border)"}`,
                   borderRadius: 14,
-                  color: "var(--text)",
+                  color: isLocked ? "var(--text-mute)" : "var(--text)",
                   fontSize: 16,
                   fontFamily: "var(--font-sans)",
                   outline: "none",
-                  boxShadow: focused
+                  cursor: isLocked ? "not-allowed" : undefined,
+                  boxShadow: !isLocked && focused
                     ? "0 0 0 3px var(--accent-ring), 0 12px 32px -8px rgba(255,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.05)"
                     : "inset 0 1px 0 rgba(255,255,255,0.03)",
                   transition:
@@ -918,6 +934,19 @@ export default function SearchScreen({
               }}
             >
               {error}
+            </p>
+          )}
+          {isLocked && (
+            <p
+              style={{
+                color: "var(--accent)",
+                fontSize: 13,
+                marginTop: 12,
+                textAlign: "center",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              Daily or weekly limit reached. Come back tomorrow.
             </p>
           )}
         </div>

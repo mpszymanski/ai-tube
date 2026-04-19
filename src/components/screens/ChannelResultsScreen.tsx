@@ -11,19 +11,21 @@ interface ChannelResultsScreenProps {
   query: string;
   todaySeconds: number;
   weekSeconds: number;
+  dailyLimitSeconds: number;
+  weeklyLimitSeconds: number;
+  isLocked: boolean;
   onSelect(videoId: string): void;
   onBack(): void;
   onSettings(): void;
 }
 
-
-export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, onSelect, onBack, onSettings }: ChannelResultsScreenProps) {
+export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSelect, onBack, onSettings }: ChannelResultsScreenProps) {
   const [filterOn, setFilterOn] = useState(true);
   const { channel, latestVideos } = data;
   const visibleVideos = filterOn ? latestVideos.filter((r) => !r.isClickbait) : latestVideos;
 
   return (
-    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds}>
+    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds} dailyLimitSeconds={dailyLimitSeconds} weeklyLimitSeconds={weeklyLimitSeconds}>
       <div style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Channel card */}
           <div
@@ -92,6 +94,7 @@ export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, 
                 video={video}
                 onClick={() => onSelect(video.videoId)}
                 animationDelay={ANIMATION_DELAYS[i] ?? "0.05s"}
+                disabled={isLocked}
               />
             ))
           )}

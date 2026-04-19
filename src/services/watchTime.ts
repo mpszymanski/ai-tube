@@ -60,8 +60,20 @@ export function getTodaySeconds(): number {
   return getWatchTimeData().daily[todayKey()] ?? 0;
 }
 
+function currentWeekStart(): string {
+  const now = new Date();
+  const day = now.getUTCDay(); // 0=Sun, 1=Mon … 6=Sat
+  const diff = day === 0 ? 6 : day - 1;
+  const monday = new Date(now);
+  monday.setUTCDate(now.getUTCDate() - diff);
+  return monday.toISOString().slice(0, 10);
+}
+
 export function getWeekSeconds(): number {
-  return Object.values(getWatchTimeData().daily).reduce((sum, v) => sum + v, 0);
+  const weekStart = currentWeekStart();
+  return Object.entries(getWatchTimeData().daily)
+    .filter(([key]) => key >= weekStart)
+    .reduce((sum, [, v]) => sum + v, 0);
 }
 
 export function formatTime(totalSeconds: number): string {

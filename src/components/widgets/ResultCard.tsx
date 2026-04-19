@@ -5,16 +5,17 @@ interface ResultCardProps {
   video: VideoResult;
   onClick(): void;
   animationDelay?: string;
+  disabled?: boolean;
 }
 
-export default function ResultCard({ video, onClick, animationDelay }: ResultCardProps) {
+export default function ResultCard({ video, onClick, animationDelay, disabled }: ResultCardProps) {
   const duration = formatDuration(video.duration);
   const views = formatViewCount(video.viewCount);
   const posted = formatPublishedAt(video.publishedAt);
 
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       style={{
         display: "flex",
         flexDirection: "row",
@@ -25,18 +26,18 @@ export default function ResultCard({ video, onClick, animationDelay }: ResultCar
         border: "1px solid var(--border)",
         borderRadius: "var(--radius)",
         padding: 12,
-        cursor: "pointer",
+        cursor: disabled ? "not-allowed" : "pointer",
         textAlign: "left",
-        animation: `rowIn 0.4s var(--ease) forwards`,
-        animationDelay: animationDelay ?? "0s",
-        opacity: 0,
+        animation: disabled ? "none" : `rowIn 0.4s var(--ease) forwards`,
+        animationDelay: disabled ? undefined : (animationDelay ?? "0s"),
+        opacity: disabled ? 0.5 : 0,
         transition: "background 0.15s var(--ease), border-color 0.15s var(--ease)",
       }}
-      onMouseEnter={(e) => {
+      onMouseEnter={disabled ? undefined : (e) => {
         e.currentTarget.style.background = "var(--bg-hover)";
         e.currentTarget.style.borderColor = "var(--border-strong)";
       }}
-      onMouseLeave={(e) => {
+      onMouseLeave={disabled ? undefined : (e) => {
         e.currentTarget.style.background = "var(--bg-card)";
         e.currentTarget.style.borderColor = "var(--border)";
       }}

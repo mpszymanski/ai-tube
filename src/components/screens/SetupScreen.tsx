@@ -5,12 +5,15 @@ import { getConfig, saveConfig } from "../../services/config";
 interface SetupScreenProps {
   onSave(): void;
   onBack?(): void;
+  isLocked?: boolean;
 }
 
-export default function SetupScreen({ onSave, onBack }: SetupScreenProps) {
+export default function SetupScreen({ onSave, onBack, isLocked }: SetupScreenProps) {
   const config = getConfig();
   const [apiKey, setApiKey] = useState(config.youtubeApiKey);
   const [lmUrl, setLmUrl] = useState(config.lmStudioUrl);
+  const [dailyMinutes, setDailyMinutes] = useState(Math.round(config.dailyLimitSeconds / 60));
+  const [weeklyMinutes, setWeeklyMinutes] = useState(Math.round(config.weeklyLimitSeconds / 60));
   const [apiKeyTouched, setApiKeyTouched] = useState(false);
 
   const apiKeyInvalid = apiKeyTouched && apiKey.length > 0 && apiKey.length < 20;
@@ -18,7 +21,12 @@ export default function SetupScreen({ onSave, onBack }: SetupScreenProps) {
 
   function handleSave() {
     if (!canSave) return;
-    saveConfig({ youtubeApiKey: apiKey.trim(), lmStudioUrl: lmUrl.trim() || "http://localhost:1234" });
+    saveConfig({
+      youtubeApiKey: apiKey.trim(),
+      lmStudioUrl: lmUrl.trim() || "http://localhost:1234",
+      dailyLimitSeconds: Math.max(1, dailyMinutes) * 60,
+      weeklyLimitSeconds: Math.max(1, weeklyMinutes) * 60,
+    });
     onSave();
   }
 
@@ -33,6 +41,12 @@ export default function SetupScreen({ onSave, onBack }: SetupScreenProps) {
     fontSize: 13,
     outline: "none",
     transition: "border-color 0.15s, box-shadow 0.15s",
+  };
+
+  const limitInputStyle: React.CSSProperties = {
+    ...inputBase,
+    opacity: isLocked ? 0.5 : 1,
+    cursor: isLocked ? "not-allowed" : undefined,
   };
 
   return (
@@ -111,6 +125,44 @@ export default function SetupScreen({ onSave, onBack }: SetupScreenProps) {
             <span style={{ fontSize: 11, color: "var(--text-mute)" }}>
               Your local model endpoint — used to rephrase queries.
             </span>
+          </div>
+
+          {/* Usage Limits */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--text-dim)" }}>Usage Limits</label>
+            <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, color: "var(--text-mute)" }}>Daily (minutes)</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={dailyMinutes}
+                  onChange={(e) => setDailyMinutes(Number(e.target.value))}
+                  disabled={!!isLocked}
+                  style={limitInputStyle}
+                />
+              </div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, color: "var(--text-mute)" }}>Weekly (minutes)</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={weeklyMinutes}
+                  onChange={(e) => setWeeklyMinutes(Number(e.target.value))}
+                  disabled={!!isLocked}
+                  style={limitInputStyle}
+                />
+              </div>
+            </div>
+            {isLocked ? (
+              <span style={{ fontSize: 11, color: "var(--accent)" }}>
+                Limit reached — limits cannot be changed while locked.
+              </span>
+            ) : (
+              <span style={{ fontSize: 11, color: "var(--text-mute)" }}>
+                Resets daily at midnight · Weekly resets every Monday.
+              </span>
+            )}
           </div>
         </div>
 

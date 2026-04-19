@@ -9,9 +9,11 @@ interface ScreenShellProps {
   onSettings(): void;
   todaySeconds: number;
   weekSeconds: number;
+  dailyLimitSeconds: number;
+  weeklyLimitSeconds: number;
 }
 
-export default function ScreenShell({ children, onBack, onSettings, todaySeconds, weekSeconds }: ScreenShellProps) {
+export default function ScreenShell({ children, onBack, onSettings, todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds }: ScreenShellProps) {
   return (
     <div className="app">
       <div className="app__topbar">
@@ -43,7 +45,7 @@ export default function ScreenShell({ children, onBack, onSettings, todaySeconds
           >
             <CogIcon size={16} />
           </button>
-          <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
+          <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} dailyLimitSeconds={dailyLimitSeconds} weeklyLimitSeconds={weeklyLimitSeconds} />
         </div>
       </div>
       <div className="app__main" style={{ justifyContent: "flex-start", paddingTop: 96 }}>
