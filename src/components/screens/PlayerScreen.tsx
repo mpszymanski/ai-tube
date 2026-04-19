@@ -1,10 +1,9 @@
 import { useEffect, useRef } from "react";
-import { VideoResult } from "../types";
-import { addSeconds } from "../services/watchTime";
-import WatchTimeCounter from "./WatchTimeCounter";
-import BackButton from "./BackButton";
-import TagPicker from "./TagPicker";
-import { formatViewCount, formatPublishedAt } from "../utils/formatters";
+import { VideoResult } from "../../types";
+import { addSeconds } from "../../services/watchTime";
+import ScreenShell from "../layout/ScreenShell";
+import TagPicker from "../widgets/TagPicker";
+import { formatViewCount, formatPublishedAt } from "../../utils/formatters";
 
 declare global {
   interface Window {
@@ -18,10 +17,11 @@ interface PlayerScreenProps {
   todaySeconds: number;
   weekSeconds: number;
   onBack(): void;
+  onSettings(): void;
 }
 
 
-export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack }: PlayerScreenProps) {
+export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack, onSettings }: PlayerScreenProps) {
   const playerDivRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -77,14 +77,8 @@ export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack 
   const metaParts = [formatViewCount(video.viewCount), formatPublishedAt(video.publishedAt)].filter(Boolean);
 
   return (
-    <div className="app">
-      <div className="app__topbar">
-        <BackButton onBack={onBack} />
-        <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
-      </div>
-
-      <div className="app__main" style={{ justifyContent: "flex-start", paddingTop: 96 }}>
-        <div style={{ width: "100%", maxWidth: 760, display: "flex", flexDirection: "column", gap: 16 }}>
+    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds}>
+      <div style={{ width: "100%", maxWidth: 760, display: "flex", flexDirection: "column", gap: 16 }}>
           <div
             style={{
               width: "100%",
@@ -142,7 +136,6 @@ export default function PlayerScreen({ video, todaySeconds, weekSeconds, onBack 
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </ScreenShell>
   );
 }

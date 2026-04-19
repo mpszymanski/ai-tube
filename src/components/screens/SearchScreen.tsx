@@ -1,30 +1,31 @@
 import { useState, useRef, useEffect } from "react";
-import { CogIcon } from "./Icons";
-import { VideoResult, ChannelResult, ChannelResultWithVideos } from "../types";
-import BackButton from "./BackButton";
-import TagPicker from "./TagPicker";
-import { getConfig } from "../services/config";
+import { CogIcon } from "../ui/Icons";
+import ThinkingRow from "../ui/ThinkingRow";
+import { VideoResult, ChannelResult, ChannelResultWithVideos } from "../../types";
+import BackButton from "../ui/BackButton";
+import TagPicker from "../widgets/TagPicker";
+import { getConfig } from "../../services/config";
 import {
   analyzeQuery,
   classifyClickbait,
   groupVideosByTopic,
-} from "../services/lmStudio";
+} from "../../services/lmStudio";
 import {
   searchYouTube,
   searchChannels,
   getChannelLatestVideos,
-} from "../services/youtube";
+} from "../../services/youtube";
 import {
   getAllTags,
   getChannelsByTag,
   normalizeTag,
   subscribeToChanges,
-} from "../services/taggedChannels";
-import { tagStyle } from "../utils/tagColor";
-import { TopicGroup } from "../types";
-import Logo from "./Logo";
-import WatchTimeCounter from "./WatchTimeCounter";
-import { getUsage } from "../services/apiUsage";
+} from "../../services/taggedChannels";
+import { tagStyle } from "../../utils/tagColor";
+import { TopicGroup } from "../../types";
+import Logo from "../ui/Logo";
+import WatchTimeCounter from "../widgets/WatchTimeCounter";
+import { getUsage } from "../../services/apiUsage";
 
 interface SearchScreenProps {
   onSearch(results: VideoResult[], query: string): void;
@@ -37,42 +38,6 @@ interface SearchScreenProps {
 }
 
 type Phase = "idle" | "thinking" | "channel-confirm";
-
-function Spinner() {
-  return (
-    <div
-      style={{
-        width: 14,
-        height: 14,
-        borderRadius: "50%",
-        border: "2px solid var(--border-strong)",
-        borderTopColor: "var(--accent)",
-        animation: "spin 0.7s linear infinite",
-        flexShrink: 0,
-      }}
-    />
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 14 14"
-      fill="none"
-      style={{ flexShrink: 0 }}
-    >
-      <path
-        d="M2.5 7l3.5 3.5 5.5-6"
-        stroke="var(--success)"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 function SearchIcon({ active }: { active: boolean }) {
   return (
@@ -484,28 +449,6 @@ export default function SearchScreen({
     }
   }
 
-  const rowStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    background: "var(--bg-elev)",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius)",
-    padding: "14px 18px",
-    animation: "rowIn 0.5s var(--ease) forwards",
-    opacity: 0,
-  };
-
-  const labelStyle: React.CSSProperties = {
-    color: "var(--text-mute)",
-    fontSize: 11,
-    fontFamily: "var(--font-mono)",
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    minWidth: 78,
-    flexShrink: 0,
-  };
-
   const subsBtnStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -587,65 +530,37 @@ export default function SearchScreen({
             }}
           >
             {row1Visible && (
-              <div style={{ ...rowStyle, animationDelay: "0s" }}>
-                <span style={labelStyle}>You</span>
-                <span style={{ color: "var(--text)", flex: 1 }}>
-                  {originalQuery}
-                </span>
-                <CheckIcon />
-              </div>
+              <ThinkingRow label="You" status="done">
+                <span style={{ color: "var(--text)" }}>{originalQuery}</span>
+              </ThinkingRow>
             )}
             {row2Visible && (
-              <div style={{ ...rowStyle, animationDelay: "0s" }}>
-                <span style={labelStyle}>Query</span>
-                <span
-                  style={{
-                    color: "var(--text)",
-                    flex: 1,
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 14,
-                  }}
-                >
+              <ThinkingRow label="Query" status={typewriterDone ? "done" : "pending"}>
+                <span style={{ color: "var(--text)", fontFamily: "var(--font-mono)", fontSize: 14 }}>
                   {rephrasedText}
                   {!typewriterDone && (
-                    <span
-                      style={{
-                        animation: "blink 1s steps(2) infinite",
-                        display: "inline-block",
-                      }}
-                    >
-                      ▌
-                    </span>
+                    <span style={{ animation: "blink 1s steps(2) infinite", display: "inline-block" }}>▌</span>
                   )}
                 </span>
-                {typewriterDone ? <CheckIcon /> : <Spinner />}
-              </div>
+              </ThinkingRow>
             )}
             {row3Visible && detectedChannelName && (
-              <div style={{ ...rowStyle, animationDelay: "0s" }}>
-                <span style={labelStyle}>Channel</span>
-                <span style={{ color: "var(--text-dim)", flex: 1 }}>
-                  Looking up{" "}
-                  <span style={{ color: "var(--text)" }}>
-                    {detectedChannelName}
-                  </span>
-                  …
+              <ThinkingRow label="Channel" status={channelRowDone ? "done" : "pending"}>
+                <span style={{ color: "var(--text-dim)" }}>
+                  Looking up <span style={{ color: "var(--text)" }}>{detectedChannelName}</span>…
                 </span>
-                {channelRowDone ? <CheckIcon /> : <Spinner />}
-              </div>
+              </ThinkingRow>
             )}
             {row4Visible && (
-              <div style={{ ...rowStyle, animationDelay: "0s" }}>
-                <span style={labelStyle}>Search</span>
-                <span style={{ color: "var(--text-dim)", flex: 1 }}>
+              <ThinkingRow label="Search" status="pending">
+                <span style={{ color: "var(--text-dim)" }}>
                   {isTagSearch
                     ? "Fetching recent videos · grouping by topic…"
                     : pendingIntent === "channel"
                       ? "Loading latest videos…"
                       : "Querying YouTube · filtering clickbait…"}
                 </span>
-                <Spinner />
-              </div>
+              </ThinkingRow>
             )}
             {error && (
               <p

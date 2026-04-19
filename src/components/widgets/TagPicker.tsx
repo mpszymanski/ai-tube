@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { ChannelResult } from "../types";
+import { ChannelResult } from "../../types";
 import {
   addTag,
   removeTag,
@@ -8,8 +8,8 @@ import {
   getAllTags,
   normalizeTag,
   subscribeToChanges,
-} from "../services/taggedChannels";
-import { tagStyle } from "../utils/tagColor";
+} from "../../services/taggedChannels";
+import { tagStyle } from "../../utils/tagColor";
 
 interface TagPickerProps {
   channel: ChannelResult;

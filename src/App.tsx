@@ -6,13 +6,13 @@ import { hydrate as hydrateTaggedChannels } from "./services/taggedChannels";
 import { hydrate as hydrateApiUsage } from "./services/apiUsage";
 import { getChannelLatestVideos } from "./services/youtube";
 import { classifyClickbait } from "./services/lmStudio";
-import SetupScreen from "./components/SetupScreen";
-import SearchScreen from "./components/SearchScreen";
-import ResultsList from "./components/ResultsList";
-import GroupedResultsList from "./components/GroupedResultsList";
-import PlayerScreen from "./components/PlayerScreen";
-import ChannelResultsScreen from "./components/ChannelResultsScreen";
-import SubscriptionsScreen from "./components/SubscriptionsScreen";
+import SetupScreen from "./components/screens/SetupScreen";
+import SearchScreen from "./components/screens/SearchScreen";
+import ResultsList from "./components/screens/ResultsList";
+import GroupedResultsList from "./components/screens/GroupedResultsList";
+import PlayerScreen from "./components/screens/PlayerScreen";
+import ChannelResultsScreen from "./components/screens/ChannelResultsScreen";
+import SubscriptionsScreen from "./components/screens/SubscriptionsScreen";
 
 async function bootstrapStorage(): Promise<void> {
   await Promise.all([
@@ -161,6 +161,7 @@ export default function App() {
         weekSeconds={weekSeconds}
         onSelect={handleSelect}
         onBack={handleBackFromResults}
+        onSettings={() => setScreen("setup")}
       />
     );
   }
@@ -174,6 +175,7 @@ export default function App() {
         weekSeconds={weekSeconds}
         onSelect={handleSelect}
         onBack={handleBackFromResults}
+        onSettings={() => setScreen("setup")}
       />
     );
   }
@@ -187,6 +189,7 @@ export default function App() {
         weekSeconds={weekSeconds}
         onSelect={handleSelect}
         onBack={handleBackFromResults}
+        onSettings={() => setScreen("setup")}
       />
     );
   }
@@ -198,6 +201,7 @@ export default function App() {
         todaySeconds={todaySeconds}
         weekSeconds={weekSeconds}
         onBack={handleBackFromPlayer}
+        onSettings={() => setScreen("setup")}
       />
     );
   }
@@ -210,6 +214,7 @@ export default function App() {
           weekSeconds={weekSeconds}
           onBack={() => setScreen("search")}
           onChannelSelect={handleChannelSelectFromSubscriptions}
+          onSettings={() => setScreen("setup")}
         />
       </div>
     );

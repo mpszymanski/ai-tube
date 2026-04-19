@@ -14,8 +14,9 @@
       {
         "title": "AI Tube",
         "resizable": true,
-        "width": 800,
-        "height": 600
+        "width": 1024,
+        "height": 768,
+        "maximized": true
       }
     ],
     "security": {

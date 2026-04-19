@@ -1,5 +1,5 @@
-import { VideoResult } from "../types";
-import { formatDuration, formatViewCount, formatPublishedAt } from "../utils/formatters";
+import { VideoResult } from "../../types";
+import { formatDuration, formatViewCount, formatPublishedAt } from "../../utils/formatters";
 
 interface ResultCardProps {
   video: VideoResult;

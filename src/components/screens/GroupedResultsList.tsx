@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { TopicGroup } from "../types";
-import ResultCard from "./ResultCard";
-import WatchTimeCounter from "./WatchTimeCounter";
-import Toggle from "./Toggle";
-import BackButton from "./BackButton";
-import { ANIMATION_DELAYS } from "../utils/constants";
+import { TopicGroup } from "../../types";
+import ResultCard from "../widgets/ResultCard";
+import Toggle from "../ui/Toggle";
+import ScreenShell from "../layout/ScreenShell";
+import { ANIMATION_DELAYS } from "../../utils/constants";
 
 interface GroupedResultsListProps {
   groups: TopicGroup[];
@@ -13,9 +12,10 @@ interface GroupedResultsListProps {
   weekSeconds: number;
   onSelect(videoId: string): void;
   onBack(): void;
+  onSettings(): void;
 }
 
-export default function GroupedResultsList({ groups, query, todaySeconds, weekSeconds, onSelect, onBack }: GroupedResultsListProps) {
+export default function GroupedResultsList({ groups, query, todaySeconds, weekSeconds, onSelect, onBack, onSettings }: GroupedResultsListProps) {
   const [filterOn, setFilterOn] = useState(true);
 
   const visibleGroups = groups
@@ -28,14 +28,8 @@ export default function GroupedResultsList({ groups, query, todaySeconds, weekSe
   let globalIndex = 0;
 
   return (
-    <div className="app">
-      <div className="app__topbar">
-        <BackButton onBack={onBack} />
-        <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
-      </div>
-
-      <div className="app__main" style={{ justifyContent: "flex-start", paddingTop: 96 }}>
-        <div style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 24 }}>
+    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds}>
+      <div style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--text-dim)" }}>
               Topics for "<span style={{ color: "var(--text)" }}>{query}</span>"
@@ -90,8 +84,7 @@ export default function GroupedResultsList({ groups, query, todaySeconds, weekSe
               </div>
             ))
           )}
-        </div>
       </div>
-    </div>
+    </ScreenShell>
   );
 }

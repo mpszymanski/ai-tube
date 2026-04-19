@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { CogIcon } from "./Icons";
-import { getConfig, saveConfig } from "../services/config";
+import { CogIcon } from "../ui/Icons";
+import { getConfig, saveConfig } from "../../services/config";
 
 interface SetupScreenProps {
   onSave(): void;

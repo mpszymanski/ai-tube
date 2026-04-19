@@ -66,15 +66,27 @@ src/
     youtube.ts                    — searchChannels(), searchYouTube(), getChannelLatestVideos()
     watchTime.ts                  — watch time tracking and formatting
   components/
-    SetupScreen.tsx               — initial API key configuration form
-    SearchScreen.tsx              — search input, thinking UI, channel-confirm UI
-    ResultsList.tsx               — generic video search results + clickbait toggle
-    ChannelResultsScreen.tsx      — channel card on top + latest videos list
-    ResultCard.tsx                — individual video card (reused in both result screens)
-    PlayerScreen.tsx              — YouTube iframe player + watch time tracking
-    Logo.tsx                      — app logo (sizes: sm / lg / xl)
-    Toggle.tsx                    — clickbait filter toggle switch
-    WatchTimeCounter.tsx          — today/week watch time display (top-right)
+    screens/                      — full-screen views, one per AppScreen state
+      SetupScreen.tsx             — initial API key configuration form
+      SearchScreen.tsx            — search input, thinking UI, channel-confirm UI
+      ResultsList.tsx             — generic video search results + clickbait toggle
+      GroupedResultsList.tsx      — tag-search results grouped by topic
+      ChannelResultsScreen.tsx    — channel card on top + latest videos list
+      PlayerScreen.tsx            — YouTube iframe player + watch time tracking
+      SubscriptionsScreen.tsx     — tagged channel browser
+    layout/                       — structural wrappers (no domain logic)
+      ScreenShell.tsx             — app shell: topbar (BackButton + WatchTimeCounter) + main area
+    ui/                           — generic, reusable primitives (no domain knowledge)
+      BackButton.tsx              — back navigation button
+      EmptyState.tsx              — empty/zero-results placeholder with icon + message
+      Icons.tsx                   — SVG icon components
+      Logo.tsx                    — app logo (sizes: sm / lg / xl)
+      ThinkingRow.tsx             — labelled progress row used in SearchScreen thinking UI
+      Toggle.tsx                  — clickbait filter toggle switch
+    widgets/                      — domain-aware components, reusable across screens
+      ResultCard.tsx              — individual video card
+      TagPicker.tsx               — inline tag assignment for channels
+      WatchTimeCounter.tsx        — today/week watch time display (top-right)
   styles/global.css               — design tokens (CSS vars), global resets, animations
 ```
 

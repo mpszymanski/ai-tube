@@ -8,7 +8,8 @@
       "Bash(cmd.exe /c \"where cargo\")",
       "Bash(cmd.exe /c \"cargo --version\")",
       "Bash(npx tsc *)",
-      "Bash(where cargo *)"
+      "Bash(where cargo *)",
+      "Bash(npm test *)"
     ]
   }
 }

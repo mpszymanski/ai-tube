@@ -1,4 +1,4 @@
-import { formatTime } from "../services/watchTime";
+import { formatTime } from "../../services/watchTime";
 
 interface CounterProps {
   todaySeconds: number;

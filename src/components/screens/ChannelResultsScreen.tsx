@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { ChannelResultWithVideos } from "../types";
-import ResultCard from "./ResultCard";
-import WatchTimeCounter from "./WatchTimeCounter";
-import Toggle from "./Toggle";
-import BackButton from "./BackButton";
-import TagPicker from "./TagPicker";
-import { ANIMATION_DELAYS } from "../utils/constants";
+import { ChannelResultWithVideos } from "../../types";
+import ResultCard from "../widgets/ResultCard";
+import Toggle from "../ui/Toggle";
+import ScreenShell from "../layout/ScreenShell";
+import TagPicker from "../widgets/TagPicker";
+import { ANIMATION_DELAYS } from "../../utils/constants";
 
 interface ChannelResultsScreenProps {
   data: ChannelResultWithVideos;
@@ -14,23 +13,18 @@ interface ChannelResultsScreenProps {
   weekSeconds: number;
   onSelect(videoId: string): void;
   onBack(): void;
+  onSettings(): void;
 }
 
 
-export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, onSelect, onBack }: ChannelResultsScreenProps) {
+export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, onSelect, onBack, onSettings }: ChannelResultsScreenProps) {
   const [filterOn, setFilterOn] = useState(true);
   const { channel, latestVideos } = data;
   const visibleVideos = filterOn ? latestVideos.filter((r) => !r.isClickbait) : latestVideos;
 
   return (
-    <div className="app">
-      <div className="app__topbar">
-        <BackButton onBack={onBack} />
-        <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} />
-      </div>
-
-      <div className="app__main" style={{ justifyContent: "flex-start", paddingTop: 96 }}>
-        <div style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 16 }}>
+    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds}>
+      <div style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Channel card */}
           <div
             style={{
@@ -102,7 +96,6 @@ export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, 
             ))
           )}
         </div>
-      </div>
-    </div>
+    </ScreenShell>
   );
 }
