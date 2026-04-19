@@ -1,9 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { CogIcon } from "../ui/Icons";
-import ThinkingRow from "../ui/ThinkingRow";
 import { VideoResult, ChannelResult, ChannelResultWithVideos } from "../../types";
-import BackButton from "../ui/BackButton";
-import TagPicker from "../widgets/TagPicker";
 import { getConfig } from "../../services/config";
 import {
   analyzeQuery,
@@ -21,11 +18,12 @@ import {
   normalizeTag,
   subscribeToChanges,
 } from "../../services/taggedChannels";
-import { tagStyle } from "../../utils/tagColor";
 import { TopicGroup } from "../../types";
-import Logo from "../ui/Logo";
 import WatchTimeCounter from "../widgets/WatchTimeCounter";
 import { getUsage } from "../../services/apiUsage";
+import SearchThinkingView from "./SearchThinkingView";
+import ChannelConfirmView from "./ChannelConfirmView";
+import SearchIdleView from "./SearchIdleView";
 
 interface SearchScreenProps {
   onSearch(results: VideoResult[], query: string): void;
@@ -41,29 +39,6 @@ interface SearchScreenProps {
 }
 
 type Phase = "idle" | "thinking" | "channel-confirm";
-
-function SearchIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 20 20"
-      fill="none"
-      style={{
-        color: active ? "var(--accent)" : "var(--text-mute)",
-        transition: "color 0.2s",
-      }}
-    >
-      <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M14 14l4 4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 function SubscriptionsIcon() {
   return (
@@ -98,7 +73,6 @@ export default function SearchScreen({
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Thinking rows
   const [row1Visible, setRow1Visible] = useState(false);
   const [row2Visible, setRow2Visible] = useState(false);
   const [row3Visible, setRow3Visible] = useState(false);
@@ -109,14 +83,9 @@ export default function SearchScreen({
   const [detectedChannelName, setDetectedChannelName] = useState("");
   const [channelRowDone, setChannelRowDone] = useState(false);
 
-  // Channel confirm
-  const [channelCandidates, setChannelCandidates] = useState<ChannelResult[]>(
-    [],
-  );
+  const [channelCandidates, setChannelCandidates] = useState<ChannelResult[]>([]);
   const [pendingVideoQuery, setPendingVideoQuery] = useState("");
-  const [pendingIntent, setPendingIntent] = useState<
-    "videos" | "channel" | "channel-videos"
-  >("videos");
+  const [pendingIntent, setPendingIntent] = useState<"videos" | "channel" | "channel-videos">("videos");
 
   const [isTagSearch, setIsTagSearch] = useState(false);
   const [apiUsage, setApiUsage] = useState(() => getUsage());
@@ -125,7 +94,6 @@ export default function SearchScreen({
     if (phase === "idle") setApiUsage(getUsage());
   }, [phase]);
 
-  // Tag pills
   const [allTags, setAllTags] = useState(() => getAllTags());
   useEffect(() => {
     setAllTags(getAllTags());
@@ -415,10 +383,7 @@ export default function SearchScreen({
       setRow3Visible(true);
 
       try {
-        const channels = await searchChannels(
-          channelName,
-          config.youtubeApiKey,
-        );
+        const channels = await searchChannels(channelName, config.youtubeApiKey);
         if (channels.length === 1) {
           resolvedChannelId = channels[0].channelId;
           resolvedChannel = channels[0];
@@ -529,428 +494,55 @@ export default function SearchScreen({
     return (
       <>
         {topbar}
-        <div className="app__main">
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 620,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-            }}
-          >
-            {row1Visible && (
-              <ThinkingRow label="You" status="done">
-                <span style={{ color: "var(--text)" }}>{originalQuery}</span>
-              </ThinkingRow>
-            )}
-            {row2Visible && (
-              <ThinkingRow label="Query" status={typewriterDone ? "done" : "pending"}>
-                <span style={{ color: "var(--text)", fontFamily: "var(--font-mono)", fontSize: 14 }}>
-                  {rephrasedText}
-                  {!typewriterDone && (
-                    <span style={{ animation: "blink 1s steps(2) infinite", display: "inline-block" }}>▌</span>
-                  )}
-                </span>
-              </ThinkingRow>
-            )}
-            {row3Visible && detectedChannelName && (
-              <ThinkingRow label="Channel" status={channelRowDone ? "done" : "pending"}>
-                <span style={{ color: "var(--text-dim)" }}>
-                  Looking up <span style={{ color: "var(--text)" }}>{detectedChannelName}</span>…
-                </span>
-              </ThinkingRow>
-            )}
-            {row4Visible && (
-              <ThinkingRow label="Search" status="pending">
-                <span style={{ color: "var(--text-dim)" }}>
-                  {isTagSearch
-                    ? "Fetching recent videos · grouping by topic…"
-                    : pendingIntent === "channel"
-                      ? "Loading latest videos…"
-                      : "Querying YouTube · filtering clickbait…"}
-                </span>
-              </ThinkingRow>
-            )}
-            {error && (
-              <p
-                style={{
-                  color: "var(--accent)",
-                  fontSize: 13,
-                  marginTop: 8,
-                  textAlign: "center",
-                }}
-              >
-                {error}
-              </p>
-            )}
-          </div>
-        </div>
+        <SearchThinkingView
+          row1Visible={row1Visible}
+          row2Visible={row2Visible}
+          row3Visible={row3Visible}
+          row4Visible={row4Visible}
+          originalQuery={originalQuery}
+          rephrasedText={rephrasedText}
+          typewriterDone={typewriterDone}
+          detectedChannelName={detectedChannelName}
+          channelRowDone={channelRowDone}
+          isTagSearch={isTagSearch}
+          pendingIntent={pendingIntent}
+          error={error}
+        />
       </>
     );
   }
 
   if (phase === "channel-confirm") {
-    const confirmTopbar = (
-      <div className="app__topbar" style={{ justifyContent: "space-between" }}>
-        <BackButton onBack={() => setPhase("idle")} />
-        <WatchTimeCounter
-          todaySeconds={todaySeconds}
-          weekSeconds={weekSeconds}
-          dailyLimitSeconds={dailyLimitSeconds}
-          weeklyLimitSeconds={weeklyLimitSeconds}
-        />
-      </div>
-    );
     return (
-      <>
-        {confirmTopbar}
-        <div className="app__main">
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 620,
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-            }}
-          >
-            <div>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "var(--text-mute)",
-                  fontFamily: "var(--font-mono)",
-                  marginBottom: 10,
-                }}
-              >
-                Which channel did you mean?
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {channelCandidates.map((ch) => (
-                  <div
-                    key={ch.channelId}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleChannelSelect(ch)}
-                    onKeyDown={(e) =>
-                      (e.key === "Enter" || e.key === " ") &&
-                      handleChannelSelect(ch)
-                    }
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      background: "var(--bg-elev)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius)",
-                      padding: "12px 16px",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      transition: "border-color 0.15s, background 0.15s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "var(--accent)";
-                      e.currentTarget.style.background = "var(--bg-card)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border)";
-                      e.currentTarget.style.background = "var(--bg-elev)";
-                    }}
-                  >
-                    {ch.thumbnailUrl && (
-                      <img
-                        src={ch.thumbnailUrl}
-                        alt=""
-                        referrerPolicy="no-referrer"
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: "50%",
-                          flexShrink: 0,
-                          objectFit: "cover",
-                        }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    )}
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 2,
-                        flex: 1,
-                        minWidth: 0,
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: "var(--text)",
-                          fontSize: 14,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {ch.title}
-                      </span>
-                      {ch.description && (
-                        <span
-                          style={{
-                            color: "var(--text-mute)",
-                            fontSize: 12,
-                            fontFamily: "var(--font-mono)",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {ch.description}
-                        </span>
-                      )}
-                    </div>
-                    <TagPicker channel={ch} size="sm" />
-                  </div>
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={() => handleChannelSelect(null)}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "var(--text-mute)",
-                fontSize: 13,
-                cursor: "pointer",
-                padding: "4px 0",
-                textAlign: "left",
-                fontFamily: "var(--font-mono)",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.color = "var(--text-dim)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.color = "var(--text-mute)")
-              }
-            >
-              Search all of YouTube instead →
-            </button>
-          </div>
-        </div>
-      </>
+      <ChannelConfirmView
+        channelCandidates={channelCandidates}
+        onSelect={handleChannelSelect}
+        onBack={() => setPhase("idle")}
+        todaySeconds={todaySeconds}
+        weekSeconds={weekSeconds}
+        dailyLimitSeconds={dailyLimitSeconds}
+        weeklyLimitSeconds={weeklyLimitSeconds}
+      />
     );
   }
 
   return (
     <>
       {topbar}
-      <div className="app__main" style={{ position: "relative" }}>
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            zIndex: 0,
-            background:
-              "radial-gradient(ellipse 720px 520px at 50% 38%, rgba(255,68,68,0.10) 0%, rgba(255,68,68,0.04) 35%, transparent 70%)",
-          }}
-        />
-        <div
-          style={{
-            position: "relative",
-            zIndex: 1,
-            width: "100%",
-            maxWidth: 620,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 0,
-          }}
-        >
-          <div
-            style={{
-              marginBottom: 44,
-              animation: "rowIn 0.5s var(--ease) both",
-            }}
-          >
-            <Logo size="xl" />
-          </div>
-          {allTags.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 8,
-                marginBottom: 20,
-                justifyContent: "center",
-                animation: "rowIn 0.5s var(--ease) 80ms both",
-              }}
-            >
-              {allTags.map((tag) => {
-                const s = tagStyle(tag);
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    disabled={isLocked}
-                    onClick={() => handleTagClick(tag)}
-                    style={{
-                      fontSize: 12,
-                      fontFamily: "var(--font-mono)",
-                      padding: "5px 11px",
-                      borderRadius: "var(--radius-sm)",
-                      border: `1px solid ${s.borderColor}`,
-                      color: s.color,
-                      background: s.background,
-                      cursor: isLocked ? "not-allowed" : "pointer",
-                      opacity: isLocked ? 0.45 : 1,
-                      transition:
-                        "transform 0.18s var(--ease), filter 0.18s var(--ease)",
-                      willChange: "transform",
-                    }}
-                    onMouseEnter={isLocked ? undefined : (e) => {
-                      e.currentTarget.style.transform = "translateY(-1px)";
-                      e.currentTarget.style.filter = "brightness(1.2)";
-                    }}
-                    onMouseLeave={isLocked ? undefined : (e) => {
-                      e.currentTarget.style.transform = "";
-                      e.currentTarget.style.filter = "";
-                    }}
-                  >
-                    #{tag}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <form
-            onSubmit={handleSubmit}
-            style={{
-              width: "100%",
-              animation: "rowIn 0.5s var(--ease) 160ms both",
-            }}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-          >
-            <div style={{ position: "relative", width: "100%" }}>
-              <span
-                style={{
-                  position: "absolute",
-                  left: 16,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  pointerEvents: "none",
-                  display: "flex",
-                }}
-              >
-                <SearchIcon active={focused} />
-              </span>
-              <input
-                ref={inputRef}
-                type="text"
-                disabled={isLocked}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder={isLocked ? "Limit reached" : "What do you want to watch?"}
-                style={{
-                  width: "100%",
-                  padding: "18px 52px",
-                  background: isLocked ? "var(--bg-elev)" : (focused ? "var(--bg-card)" : "var(--bg-elev)"),
-                  border: `1px solid ${!isLocked && focused ? "var(--accent)" : "var(--border)"}`,
-                  borderRadius: 14,
-                  color: isLocked ? "var(--text-mute)" : "var(--text)",
-                  fontSize: 16,
-                  fontFamily: "var(--font-sans)",
-                  outline: "none",
-                  cursor: isLocked ? "not-allowed" : undefined,
-                  boxShadow: !isLocked && focused
-                    ? "0 0 0 3px var(--accent-ring), 0 12px 32px -8px rgba(255,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.05)"
-                    : "inset 0 1px 0 rgba(255,255,255,0.03)",
-                  transition:
-                    "background 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.25s var(--ease)",
-                }}
-              />
-              <span
-                style={{
-                  position: "absolute",
-                  right: 16,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 11,
-                  color: "var(--text-mute)",
-                  opacity: focused ? 1 : 0,
-                  transition: "opacity 0.15s",
-                  pointerEvents: "none",
-                }}
-              >
-                ⏎
-              </span>
-            </div>
-          </form>
-          <div
-            style={{
-              width: "100%",
-              marginTop: 8,
-              animation: "rowIn 0.5s var(--ease) 240ms both",
-            }}
-          >
-            <div
-              style={{
-                height: 3,
-                background: "var(--border)",
-                borderRadius: 2,
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  height: "100%",
-                  width: `${Math.min(100, (apiUsage.used / apiUsage.max) * 100)}%`,
-                  background: "var(--accent)",
-                  transition: "width 0.4s var(--ease)",
-                }}
-              />
-            </div>
-            <p
-              style={{
-                fontSize: 11,
-                fontFamily: "var(--font-mono)",
-                color: "var(--text-mute)",
-                margin: "4px 0 0",
-                textAlign: "right",
-              }}
-            >
-              {apiUsage.used.toLocaleString()} / {apiUsage.max.toLocaleString()}{" "}
-              units today
-            </p>
-          </div>
-          {error && (
-            <p
-              style={{
-                color: "var(--accent)",
-                fontSize: 13,
-                marginTop: 12,
-                textAlign: "center",
-              }}
-            >
-              {error}
-            </p>
-          )}
-          {isLocked && (
-            <p
-              style={{
-                color: "var(--accent)",
-                fontSize: 13,
-                marginTop: 12,
-                textAlign: "center",
-                fontFamily: "var(--font-mono)",
-              }}
-            >
-              Daily or weekly limit reached. Come back tomorrow.
-            </p>
-          )}
-        </div>
-      </div>
+      <SearchIdleView
+        allTags={allTags}
+        isLocked={isLocked}
+        apiUsage={apiUsage}
+        error={error}
+        inputValue={inputValue}
+        focused={focused}
+        inputRef={inputRef}
+        onInputChange={setInputValue}
+        onSubmit={handleSubmit}
+        onTagClick={handleTagClick}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      />
     </>
   );
 }
