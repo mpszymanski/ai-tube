@@ -1,25 +1,36 @@
-import { ChannelResult, TaggedChannel } from "../types";
+import type { ChannelResult, TaggedChannel } from "../types";
+import type { StorageAdapter } from "./storage/adapter";
+import { KEYS } from "./storage/adapter";
+import { getAdapter } from "./storage";
 
-const KEY = "aitube_tagged_channels";
 type Listener = () => void;
 const listeners = new Set<Listener>();
 
-function notify() {
+function notify(): void {
   listeners.forEach((fn) => fn());
 }
 
-export function getTaggedChannels(): TaggedChannel[] {
+let cache: TaggedChannel[] | null = null;
+
+export async function hydrate(adapter?: StorageAdapter): Promise<void> {
+  const a = adapter ?? getAdapter();
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as TaggedChannel[];
+    const raw = await a.get(KEYS.TAGGED_CHANNELS);
+    cache = raw ? (JSON.parse(raw) as TaggedChannel[]) : [];
   } catch {
-    return [];
+    cache = [];
   }
 }
 
+export function getTaggedChannels(): TaggedChannel[] {
+  return cache ?? [];
+}
+
 function save(channels: TaggedChannel[]): void {
-  localStorage.setItem(KEY, JSON.stringify(channels));
+  cache = channels;
+  getAdapter()
+    .set(KEYS.TAGGED_CHANNELS, JSON.stringify(channels))
+    .catch(() => console.warn("aitube: tagged channels not saved"));
   notify();
 }
 
@@ -75,4 +86,8 @@ export function getChannelTags(channelId: string): string[] {
 
 export function getChannelsByTag(tag: string): TaggedChannel[] {
   return getTaggedChannels().filter((ch) => ch.tags.includes(tag));
+}
+
+export function _reset(): void {
+  cache = null;
 }

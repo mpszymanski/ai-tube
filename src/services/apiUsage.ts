@@ -1,4 +1,7 @@
-const STORAGE_KEY = "aitube_api_quota";
+import type { StorageAdapter } from "./storage/adapter";
+import { KEYS } from "./storage/adapter";
+import { getAdapter } from "./storage";
+
 const MAX_UNITS = 10000;
 
 interface UsageData {
@@ -10,24 +13,43 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function readUsage(): UsageData {
+let cache: UsageData | null = null;
+
+export async function hydrate(adapter?: StorageAdapter): Promise<void> {
+  const a = adapter ?? getAdapter();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = await a.get(KEYS.API_QUOTA);
     if (raw) {
       const data = JSON.parse(raw) as UsageData;
-      if (data.date === today()) return data;
+      cache = data.date === today() ? data : { date: today(), units: 0 };
+    } else {
+      cache = { date: today(), units: 0 };
     }
-  } catch {}
-  return { date: today(), units: 0 };
+  } catch {
+    cache = { date: today(), units: 0 };
+  }
+}
+
+function readUsage(): UsageData {
+  if (!cache || cache.date !== today()) {
+    return { date: today(), units: 0 };
+  }
+  return cache;
 }
 
 export function recordUnits(units: number): void {
   const data = readUsage();
   data.units += units;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  cache = data;
+  getAdapter()
+    .set(KEYS.API_QUOTA, JSON.stringify(data))
+    .catch(() => console.warn("aitube: API usage not saved"));
 }
 
 export function getUsage(): { used: number; max: number } {
-  const data = readUsage();
-  return { used: data.units, max: MAX_UNITS };
+  return { used: readUsage().units, max: MAX_UNITS };
+}
+
+export function _reset(): void {
+  cache = null;
 }

@@ -1,6 +1,7 @@
-import { WatchTimeData } from "../types";
-
-const STORAGE_KEY = "aitube_watch_time";
+import type { WatchTimeData } from "../types";
+import type { StorageAdapter } from "./storage/adapter";
+import { KEYS } from "./storage/adapter";
+import { getAdapter } from "./storage";
 
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10);
@@ -17,40 +18,62 @@ function pruneOldDays(data: WatchTimeData): WatchTimeData {
   return { daily };
 }
 
-export function getWatchTimeData(): WatchTimeData {
+let cache: WatchTimeData | null = null;
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleFlush(): void {
+  if (flushTimer) return;
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    if (cache) {
+      getAdapter()
+        .set(KEYS.WATCH_TIME, JSON.stringify(cache))
+        .catch(() => console.warn("aitube: watch time not saved"));
+    }
+  }, 5000);
+}
+
+export async function hydrate(adapter?: StorageAdapter): Promise<void> {
+  const a = adapter ?? getAdapter();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { daily: {} };
-    const parsed: WatchTimeData = JSON.parse(raw);
-    return pruneOldDays(parsed);
+    const raw = await a.get(KEYS.WATCH_TIME);
+    const parsed: WatchTimeData = raw ? JSON.parse(raw) : { daily: {} };
+    cache = pruneOldDays(parsed);
   } catch {
-    return { daily: {} };
+    cache = { daily: {} };
   }
+}
+
+export function getWatchTimeData(): WatchTimeData {
+  return cache ? pruneOldDays(cache) : { daily: {} };
 }
 
 export function addSeconds(seconds: number): void {
   const data = getWatchTimeData();
   const today = todayKey();
   data.daily[today] = (data.daily[today] ?? 0) + seconds;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    console.warn("aitube: localStorage quota exceeded, watch time not saved");
-  }
+  cache = data;
+  scheduleFlush();
 }
 
 export function getTodaySeconds(): number {
-  const data = getWatchTimeData();
-  return data.daily[todayKey()] ?? 0;
+  return getWatchTimeData().daily[todayKey()] ?? 0;
 }
 
 export function getWeekSeconds(): number {
-  const data = getWatchTimeData();
-  return Object.values(data.daily).reduce((sum, v) => sum + v, 0);
+  return Object.values(getWatchTimeData().daily).reduce((sum, v) => sum + v, 0);
 }
 
 export function formatTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
   return `${h}h ${m}m`;
+}
+
+export function _reset(): void {
+  cache = null;
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
 }

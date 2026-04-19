@@ -1,30 +1,40 @@
-import { AppConfig } from "../types";
-
-const STORAGE_KEY = "aitube_config";
+import type { AppConfig } from "../types";
+import type { StorageAdapter } from "./storage/adapter";
+import { KEYS } from "./storage/adapter";
+import { getAdapter } from "./storage";
 
 const defaults: AppConfig = {
   lmStudioUrl: "http://localhost:1234",
   youtubeApiKey: "",
 };
 
-export function getConfig(): AppConfig {
+let cache: AppConfig | null = null;
+
+export async function hydrate(adapter?: StorageAdapter): Promise<void> {
+  const a = adapter ?? getAdapter();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...defaults };
-    return { ...defaults, ...JSON.parse(raw) };
+    const raw = await a.get(KEYS.CONFIG);
+    cache = raw ? { ...defaults, ...JSON.parse(raw) } : { ...defaults };
   } catch {
-    return { ...defaults };
+    cache = { ...defaults };
   }
 }
 
+export function getConfig(): AppConfig {
+  return cache ?? { ...defaults };
+}
+
 export function saveConfig(config: AppConfig): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch {
-    console.warn("aitube: localStorage quota exceeded, config not saved");
-  }
+  cache = config;
+  getAdapter()
+    .set(KEYS.CONFIG, JSON.stringify(config))
+    .catch(() => console.warn("aitube: config not saved"));
 }
 
 export function isConfigured(): boolean {
   return getConfig().youtubeApiKey.length > 0;
+}
+
+export function _reset(): void {
+  cache = null;
 }

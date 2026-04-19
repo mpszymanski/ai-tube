@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { AppScreen, VideoResult, ChannelResult, ChannelResultWithVideos, TopicGroup } from "./types";
-import { isConfigured, getConfig } from "./services/config";
-import { getTodaySeconds, getWeekSeconds } from "./services/watchTime";
+import { hydrate as hydrateConfig, isConfigured, getConfig } from "./services/config";
+import { hydrate as hydrateWatchTime, getTodaySeconds, getWeekSeconds } from "./services/watchTime";
+import { hydrate as hydrateTaggedChannels } from "./services/taggedChannels";
+import { hydrate as hydrateApiUsage } from "./services/apiUsage";
 import { getChannelLatestVideos } from "./services/youtube";
 import { classifyClickbait } from "./services/lmStudio";
 import SetupScreen from "./components/SetupScreen";
@@ -12,17 +14,37 @@ import PlayerScreen from "./components/PlayerScreen";
 import ChannelResultsScreen from "./components/ChannelResultsScreen";
 import SubscriptionsScreen from "./components/SubscriptionsScreen";
 
+async function bootstrapStorage(): Promise<void> {
+  await Promise.all([
+    hydrateConfig(),
+    hydrateWatchTime(),
+    hydrateTaggedChannels(),
+    hydrateApiUsage(),
+  ]);
+}
+
 export default function App() {
-  const [screen, setScreen] = useState<AppScreen>(() =>
-    isConfigured() ? "search" : "setup"
-  );
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    bootstrapStorage().then(() => setReady(true));
+  }, []);
+
+  const [screen, setScreen] = useState<AppScreen>("search");
   const [results, setResults] = useState<VideoResult[]>([]);
   const [groupedResults, setGroupedResults] = useState<TopicGroup[]>([]);
   const [channelData, setChannelData] = useState<ChannelResultWithVideos | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoResult | null>(null);
   const [query, setQuery] = useState("");
-  const [todaySeconds, setTodaySeconds] = useState(() => getTodaySeconds());
-  const [weekSeconds, setWeekSeconds] = useState(() => getWeekSeconds());
+  const [todaySeconds, setTodaySeconds] = useState(0);
+  const [weekSeconds, setWeekSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!ready) return;
+    setScreen(isConfigured() ? "search" : "setup");
+    setTodaySeconds(getTodaySeconds());
+    setWeekSeconds(getWeekSeconds());
+  }, [ready]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -96,6 +118,10 @@ export default function App() {
     } catch {
       // If fetch fails, stay on subscriptions screen
     }
+  }
+
+  if (!ready) {
+    return <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }} />;
   }
 
   if (screen === "setup") {
