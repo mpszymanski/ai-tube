@@ -2,18 +2,15 @@ import { ReactNode } from "react";
 import BackButton from "../ui/BackButton";
 import WatchTimeCounter from "../widgets/WatchTimeCounter";
 import { CogIcon } from "../ui/Icons";
+import { useWatchLimit } from "../../context/WatchLimitContext";
 
 interface ScreenShellProps {
   children: ReactNode;
   onBack(): void;
-  onSettings(): void;
-  todaySeconds: number;
-  weekSeconds: number;
-  dailyLimitSeconds: number;
-  weeklyLimitSeconds: number;
 }
 
-export default function ScreenShell({ children, onBack, onSettings, todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds }: ScreenShellProps) {
+export default function ScreenShell({ children, onBack }: ScreenShellProps) {
+  const { onSettings } = useWatchLimit();
   return (
     <div className="app">
       <div className="app__topbar">
@@ -45,7 +42,7 @@ export default function ScreenShell({ children, onBack, onSettings, todaySeconds
           >
             <CogIcon size={16} />
           </button>
-          <WatchTimeCounter todaySeconds={todaySeconds} weekSeconds={weekSeconds} dailyLimitSeconds={dailyLimitSeconds} weeklyLimitSeconds={weeklyLimitSeconds} />
+          <WatchTimeCounter />
         </div>
       </div>
       <div className="app__main" style={{ justifyContent: "flex-start", paddingTop: 96 }}>

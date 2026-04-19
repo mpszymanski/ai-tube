@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { CogIcon } from "../ui/Icons";
 import { getConfig, saveConfig } from "../../services/config";
+import { useWatchLimit } from "../../context/WatchLimitContext";
 
 interface SetupScreenProps {
   onSave(): void;
   onBack?(): void;
-  isLocked?: boolean;
 }
 
-export default function SetupScreen({ onSave, onBack, isLocked }: SetupScreenProps) {
+export default function SetupScreen({ onSave, onBack }: SetupScreenProps) {
+  const { isLocked } = useWatchLimit();
   const config = getConfig();
   const [apiKey, setApiKey] = useState(config.youtubeApiKey);
   const [lmUrl, setLmUrl] = useState(config.lmStudioUrl);

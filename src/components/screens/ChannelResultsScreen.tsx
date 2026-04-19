@@ -5,27 +5,23 @@ import Toggle from "../ui/Toggle";
 import ScreenShell from "../layout/ScreenShell";
 import TagPicker from "../widgets/TagPicker";
 import { ANIMATION_DELAYS } from "../../utils/constants";
+import { useWatchLimit } from "../../context/WatchLimitContext";
 
 interface ChannelResultsScreenProps {
   data: ChannelResultWithVideos;
   query: string;
-  todaySeconds: number;
-  weekSeconds: number;
-  dailyLimitSeconds: number;
-  weeklyLimitSeconds: number;
-  isLocked: boolean;
   onSelect(videoId: string): void;
   onBack(): void;
-  onSettings(): void;
 }
 
-export default function ChannelResultsScreen({ data, todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSelect, onBack, onSettings }: ChannelResultsScreenProps) {
+export default function ChannelResultsScreen({ data, onSelect, onBack }: ChannelResultsScreenProps) {
+  const { isLocked } = useWatchLimit();
   const [filterOn, setFilterOn] = useState(true);
   const { channel, latestVideos } = data;
   const visibleVideos = filterOn ? latestVideos.filter((r) => !r.isClickbait) : latestVideos;
 
   return (
-    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds} dailyLimitSeconds={dailyLimitSeconds} weeklyLimitSeconds={weeklyLimitSeconds}>
+    <ScreenShell onBack={onBack}>
       <div style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Channel card */}
           <div

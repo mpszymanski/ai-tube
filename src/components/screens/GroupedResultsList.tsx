@@ -4,21 +4,17 @@ import ResultCard from "../widgets/ResultCard";
 import Toggle from "../ui/Toggle";
 import ScreenShell from "../layout/ScreenShell";
 import { ANIMATION_DELAYS } from "../../utils/constants";
+import { useWatchLimit } from "../../context/WatchLimitContext";
 
 interface GroupedResultsListProps {
   groups: TopicGroup[];
   query: string;
-  todaySeconds: number;
-  weekSeconds: number;
-  dailyLimitSeconds: number;
-  weeklyLimitSeconds: number;
-  isLocked: boolean;
   onSelect(videoId: string): void;
   onBack(): void;
-  onSettings(): void;
 }
 
-export default function GroupedResultsList({ groups, query, todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSelect, onBack, onSettings }: GroupedResultsListProps) {
+export default function GroupedResultsList({ groups, query, onSelect, onBack }: GroupedResultsListProps) {
+  const { isLocked } = useWatchLimit();
   const [filterOn, setFilterOn] = useState(true);
 
   const visibleGroups = groups
@@ -31,7 +27,7 @@ export default function GroupedResultsList({ groups, query, todaySeconds, weekSe
   let globalIndex = 0;
 
   return (
-    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds} dailyLimitSeconds={dailyLimitSeconds} weeklyLimitSeconds={weeklyLimitSeconds}>
+    <ScreenShell onBack={onBack}>
       <div style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--text-dim)" }}>

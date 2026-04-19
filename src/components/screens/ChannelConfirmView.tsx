@@ -7,31 +7,18 @@ interface ChannelConfirmViewProps {
   channelCandidates: ChannelResult[];
   onSelect(channel: ChannelResult | null): void;
   onBack(): void;
-  todaySeconds: number;
-  weekSeconds: number;
-  dailyLimitSeconds: number;
-  weeklyLimitSeconds: number;
 }
 
 export default function ChannelConfirmView({
   channelCandidates,
   onSelect,
   onBack,
-  todaySeconds,
-  weekSeconds,
-  dailyLimitSeconds,
-  weeklyLimitSeconds,
 }: ChannelConfirmViewProps) {
   return (
     <>
       <div className="app__topbar" style={{ justifyContent: "space-between" }}>
         <BackButton onBack={onBack} />
-        <WatchTimeCounter
-          todaySeconds={todaySeconds}
-          weekSeconds={weekSeconds}
-          dailyLimitSeconds={dailyLimitSeconds}
-          weeklyLimitSeconds={weeklyLimitSeconds}
-        />
+        <WatchTimeCounter />
       </div>
       <div className="app__main">
         <div

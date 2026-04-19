@@ -14,15 +14,10 @@ declare global {
 
 interface PlayerScreenProps {
   video: VideoResult;
-  todaySeconds: number;
-  weekSeconds: number;
-  dailyLimitSeconds: number;
-  weeklyLimitSeconds: number;
   onBack(): void;
-  onSettings(): void;
 }
 
-export default function PlayerScreen({ video, todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, onBack, onSettings }: PlayerScreenProps) {
+export default function PlayerScreen({ video, onBack }: PlayerScreenProps) {
   const playerDivRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -78,7 +73,7 @@ export default function PlayerScreen({ video, todaySeconds, weekSeconds, dailyLi
   const metaParts = [formatViewCount(video.viewCount), formatPublishedAt(video.publishedAt)].filter(Boolean);
 
   return (
-    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds} dailyLimitSeconds={dailyLimitSeconds} weeklyLimitSeconds={weeklyLimitSeconds}>
+    <ScreenShell onBack={onBack}>
       <div style={{ width: "100%", maxWidth: 760, display: "flex", flexDirection: "column", gap: 16 }}>
           <div
             style={{

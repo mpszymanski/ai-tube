@@ -98,11 +98,6 @@ export async function groupVideosByTopic(
   return result.length > 0 ? result : fallback;
 }
 
-export async function filterClickbait(titles: string[], apiUrl: string): Promise<string[]> {
-  const classified = await classifyClickbait(titles, apiUrl);
-  return classified.filter((item) => !item.clickbait).map((item) => item.title);
-}
-
 export async function classifyClickbait(
   titles: string[],
   apiUrl: string,

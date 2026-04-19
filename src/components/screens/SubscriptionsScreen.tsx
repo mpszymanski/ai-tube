@@ -4,19 +4,15 @@ import { getTaggedChannels, getChannelsByTag, subscribeToChanges } from "../../s
 import { tagStyle } from "../../utils/tagColor";
 import TagPicker from "../widgets/TagPicker";
 import ScreenShell from "../layout/ScreenShell";
+import { useWatchLimit } from "../../context/WatchLimitContext";
 
 interface SubscriptionsScreenProps {
-  todaySeconds: number;
-  weekSeconds: number;
-  dailyLimitSeconds: number;
-  weeklyLimitSeconds: number;
-  isLocked: boolean;
   onBack(): void;
   onChannelSelect(channel: ChannelResult): Promise<void>;
-  onSettings(): void;
 }
 
-export default function SubscriptionsScreen({ todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onBack, onChannelSelect, onSettings }: SubscriptionsScreenProps) {
+export default function SubscriptionsScreen({ onBack, onChannelSelect }: SubscriptionsScreenProps) {
+  const { isLocked } = useWatchLimit();
   const [store, setStore] = useState<TaggedChannel[]>(() => getTaggedChannels());
   const [loadingChannelId, setLoadingChannelId] = useState<string | null>(null);
 
@@ -38,7 +34,7 @@ export default function SubscriptionsScreen({ todaySeconds, weekSeconds, dailyLi
   }
 
   return (
-    <ScreenShell onBack={onBack} onSettings={onSettings} todaySeconds={todaySeconds} weekSeconds={weekSeconds} dailyLimitSeconds={dailyLimitSeconds} weeklyLimitSeconds={weeklyLimitSeconds}>
+    <ScreenShell onBack={onBack}>
       <div style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 24 }}>
           <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Subscriptions

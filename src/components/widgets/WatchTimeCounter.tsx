@@ -1,13 +1,8 @@
 import { formatTime } from "../../services/watchTime";
+import { useWatchLimit } from "../../context/WatchLimitContext";
 
-interface CounterProps {
-  todaySeconds: number;
-  weekSeconds: number;
-  dailyLimitSeconds: number;
-  weeklyLimitSeconds: number;
-}
-
-export default function WatchTimeCounter({ todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds }: CounterProps) {
+export default function WatchTimeCounter() {
+  const { todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds } = useWatchLimit();
   const dailyExceeded = todaySeconds >= dailyLimitSeconds;
   const weeklyExceeded = weekSeconds >= weeklyLimitSeconds;
   const isLocked = dailyExceeded || weeklyExceeded;

@@ -6,6 +6,7 @@ import { hydrate as hydrateTaggedChannels } from "./services/taggedChannels";
 import { hydrate as hydrateApiUsage } from "./services/apiUsage";
 import { getChannelLatestVideos } from "./services/youtube";
 import { classifyClickbait } from "./services/lmStudio";
+import { WatchLimitProvider } from "./context/WatchLimitContext";
 import SetupScreen from "./components/screens/SetupScreen";
 import SearchScreen from "./components/screens/SearchScreen";
 import ResultsList from "./components/screens/ResultsList";
@@ -127,117 +128,97 @@ export default function App() {
     return <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }} />;
   }
 
+  const shellValue = { todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSettings: () => setScreen("setup") };
+
   if (screen === "setup") {
     const wasConfigured = isConfigured();
     return (
-      <div className="app">
-        <SetupScreen
-          onSave={() => setScreen("search")}
-          onBack={wasConfigured ? () => setScreen("search") : undefined}
-          isLocked={isLocked}
-        />
-      </div>
+      <WatchLimitProvider value={shellValue}>
+        <div className="app">
+          <SetupScreen
+            onSave={() => setScreen("search")}
+            onBack={wasConfigured ? () => setScreen("search") : undefined}
+          />
+        </div>
+      </WatchLimitProvider>
     );
   }
 
   if (screen === "search") {
     return (
-      <div className="app">
-        <SearchScreen
-          onSearch={handleSearch}
-          onGroupedSearch={handleGroupedSearch}
-          onChannelSearch={handleChannelSearch}
-          onSubscriptions={() => setScreen("subscriptions")}
-          onSettings={() => setScreen("setup")}
-          todaySeconds={todaySeconds}
-          weekSeconds={weekSeconds}
-          dailyLimitSeconds={dailyLimitSeconds}
-          weeklyLimitSeconds={weeklyLimitSeconds}
-          isLocked={isLocked}
-        />
-      </div>
+      <WatchLimitProvider value={shellValue}>
+        <div className="app">
+          <SearchScreen
+            onSearch={handleSearch}
+            onGroupedSearch={handleGroupedSearch}
+            onChannelSearch={handleChannelSearch}
+            onSubscriptions={() => setScreen("subscriptions")}
+          />
+        </div>
+      </WatchLimitProvider>
     );
   }
 
   if (screen === "results") {
     return (
-      <ResultsList
-        results={results}
-        query={query}
-        todaySeconds={todaySeconds}
-        weekSeconds={weekSeconds}
-        dailyLimitSeconds={dailyLimitSeconds}
-        weeklyLimitSeconds={weeklyLimitSeconds}
-        isLocked={isLocked}
-        onSelect={handleSelect}
-        onBack={handleBackFromResults}
-        onSettings={() => setScreen("setup")}
-      />
+      <WatchLimitProvider value={shellValue}>
+        <ResultsList
+          results={results}
+          query={query}
+          onSelect={handleSelect}
+          onBack={handleBackFromResults}
+        />
+      </WatchLimitProvider>
     );
   }
 
   if (screen === "grouped-results") {
     return (
-      <GroupedResultsList
-        groups={groupedResults}
-        query={query}
-        todaySeconds={todaySeconds}
-        weekSeconds={weekSeconds}
-        dailyLimitSeconds={dailyLimitSeconds}
-        weeklyLimitSeconds={weeklyLimitSeconds}
-        isLocked={isLocked}
-        onSelect={handleSelect}
-        onBack={handleBackFromResults}
-        onSettings={() => setScreen("setup")}
-      />
+      <WatchLimitProvider value={shellValue}>
+        <GroupedResultsList
+          groups={groupedResults}
+          query={query}
+          onSelect={handleSelect}
+          onBack={handleBackFromResults}
+        />
+      </WatchLimitProvider>
     );
   }
 
   if (screen === "channel-results" && channelData) {
     return (
-      <ChannelResultsScreen
-        data={channelData}
-        query={query}
-        todaySeconds={todaySeconds}
-        weekSeconds={weekSeconds}
-        dailyLimitSeconds={dailyLimitSeconds}
-        weeklyLimitSeconds={weeklyLimitSeconds}
-        isLocked={isLocked}
-        onSelect={handleSelect}
-        onBack={handleBackFromResults}
-        onSettings={() => setScreen("setup")}
-      />
+      <WatchLimitProvider value={shellValue}>
+        <ChannelResultsScreen
+          data={channelData}
+          query={query}
+          onSelect={handleSelect}
+          onBack={handleBackFromResults}
+        />
+      </WatchLimitProvider>
     );
   }
 
   if (screen === "player" && selectedVideo) {
     return (
-      <PlayerScreen
-        video={selectedVideo}
-        todaySeconds={todaySeconds}
-        weekSeconds={weekSeconds}
-        dailyLimitSeconds={dailyLimitSeconds}
-        weeklyLimitSeconds={weeklyLimitSeconds}
-        onBack={handleBackFromPlayer}
-        onSettings={() => setScreen("setup")}
-      />
+      <WatchLimitProvider value={shellValue}>
+        <PlayerScreen
+          video={selectedVideo}
+          onBack={handleBackFromPlayer}
+        />
+      </WatchLimitProvider>
     );
   }
 
   if (screen === "subscriptions") {
     return (
-      <div className="app">
-        <SubscriptionsScreen
-          todaySeconds={todaySeconds}
-          weekSeconds={weekSeconds}
-          dailyLimitSeconds={dailyLimitSeconds}
-          weeklyLimitSeconds={weeklyLimitSeconds}
-          isLocked={isLocked}
-          onBack={() => setScreen("search")}
-          onChannelSelect={handleChannelSelectFromSubscriptions}
-          onSettings={() => setScreen("setup")}
-        />
-      </div>
+      <WatchLimitProvider value={shellValue}>
+        <div className="app">
+          <SubscriptionsScreen
+            onBack={() => setScreen("search")}
+            onChannelSelect={handleChannelSelectFromSubscriptions}
+          />
+        </div>
+      </WatchLimitProvider>
     );
   }
 

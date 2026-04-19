@@ -128,36 +128,6 @@ export async function getChannelLatestVideos(
   });
 }
 
-export async function searchYouTubeMultiChannel(
-  query: string,
-  channelIds: string[],
-  apiKey: string,
-): Promise<VideoResult[]> {
-  if (channelIds.length === 0) return [];
-
-  const settled = await Promise.allSettled(
-    channelIds.map((id) => searchYouTube(query, apiKey, id))
-  );
-
-  const all: VideoResult[] = [];
-  const seen = new Set<string>();
-
-  for (const result of settled) {
-    if (result.status === "fulfilled") {
-      for (const video of result.value) {
-        if (!seen.has(video.videoId)) {
-          seen.add(video.videoId);
-          all.push(video);
-        }
-      }
-    }
-  }
-
-  return all
-    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-    .slice(0, 20);
-}
-
 export async function searchYouTube(query: string, apiKey: string, channelId?: string): Promise<VideoResult[]> {
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.searchParams.set("part", "snippet");

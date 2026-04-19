@@ -21,6 +21,7 @@ import {
 import { TopicGroup } from "../../types";
 import WatchTimeCounter from "../widgets/WatchTimeCounter";
 import { getUsage } from "../../services/apiUsage";
+import { useWatchLimit } from "../../context/WatchLimitContext";
 import SearchThinkingView from "./SearchThinkingView";
 import ChannelConfirmView from "./ChannelConfirmView";
 import SearchIdleView from "./SearchIdleView";
@@ -30,12 +31,6 @@ interface SearchScreenProps {
   onGroupedSearch(groups: TopicGroup[], query: string): void;
   onChannelSearch(data: ChannelResultWithVideos, query: string): void;
   onSubscriptions(): void;
-  onSettings(): void;
-  todaySeconds: number;
-  weekSeconds: number;
-  dailyLimitSeconds: number;
-  weeklyLimitSeconds: number;
-  isLocked: boolean;
 }
 
 type Phase = "idle" | "thinking" | "channel-confirm";
@@ -61,13 +56,8 @@ export default function SearchScreen({
   onGroupedSearch,
   onChannelSearch,
   onSubscriptions,
-  onSettings,
-  todaySeconds,
-  weekSeconds,
-  dailyLimitSeconds,
-  weeklyLimitSeconds,
-  isLocked,
 }: SearchScreenProps) {
+  const { isLocked, onSettings } = useWatchLimit();
   const [phase, setPhase] = useState<Phase>("idle");
   const [inputValue, setInputValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -102,6 +92,29 @@ export default function SearchScreen({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const typewriterTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function afterMinDelay(start: number, fn: () => void): void {
+    setTimeout(fn, Math.max(0, 1200 - (Date.now() - start)));
+  }
+
+  function beginThinking(q: string, isTag: boolean): void {
+    setError(null);
+    setPhase("thinking");
+    setIsTagSearch(isTag);
+    setOriginalQuery(q);
+    setRephrasedText("");
+    setTypewriterDone(false);
+    setRow1Visible(false);
+    setRow2Visible(false);
+    setRow3Visible(false);
+    setRow4Visible(false);
+    if (!isTag) {
+      setDetectedChannelName("");
+      setChannelRowDone(false);
+    }
+    setTimeout(() => setRow1Visible(true), 0);
+    if (!isTag) setTimeout(() => setRow2Visible(true), 450);
+  }
 
   function startTypewriter(text: string) {
     if (typewriterTimer.current) clearInterval(typewriterTimer.current);
@@ -143,17 +156,12 @@ export default function SearchScreen({
         .map((r) => ({ ...r, isClickbait: clickbaitMap.get(r.title) ?? false }))
         .slice(0, 10);
 
-      const delay = Math.max(0, 1200 - (Date.now() - searchStart));
-      setTimeout(
-        () => onChannelSearch({ channel, latestVideos }, displayQuery),
-        delay,
-      );
+      afterMinDelay(searchStart, () => onChannelSearch({ channel, latestVideos }, displayQuery));
     } catch {
-      const delay = Math.max(0, 1200 - (Date.now() - searchStart));
-      setTimeout(() => {
+      afterMinDelay(searchStart, () => {
         setPhase("idle");
         setError("Failed to load channel videos. Check your API key.");
-      }, delay);
+      });
     }
   }
 
@@ -187,29 +195,26 @@ export default function SearchScreen({
         .slice(0, 10);
 
       if (results.length === 0) {
-        const delay = Math.max(0, 1200 - (Date.now() - searchStart));
-        setTimeout(() => {
+        afterMinDelay(searchStart, () => {
           setPhase("idle");
           setError("No results found. Try a different search.");
-        }, delay);
+        });
         return;
       }
     } catch (err: any) {
       const msg = err?.message ?? "";
-      const delay = Math.max(0, 1200 - (Date.now() - searchStart));
-      setTimeout(() => {
+      afterMinDelay(searchStart, () => {
         setPhase("idle");
         if (msg.includes("LM Studio") || msg.includes("localhost")) {
           setError("Cannot reach LM Studio. Make sure it's running.");
         } else {
           setError("YouTube search failed. Check your API key.");
         }
-      }, delay);
+      });
       return;
     }
 
-    const delay = Math.max(0, 1200 - (Date.now() - searchStart));
-    setTimeout(() => onSearch(results, displayQuery), delay);
+    afterMinDelay(searchStart, () => onSearch(results, displayQuery));
   }
 
   async function doTagVideoSearch(
@@ -246,11 +251,10 @@ export default function SearchScreen({
       }
 
       if (allVideos.length === 0) {
-        const delay = Math.max(0, 1200 - (Date.now() - searchStart));
-        setTimeout(() => {
+        afterMinDelay(searchStart, () => {
           setPhase("idle");
           setError("No recent videos found for this tag.");
-        }, delay);
+        });
         return;
       }
 
@@ -276,22 +280,19 @@ export default function SearchScreen({
         .filter((g) => g.videos.length > 0);
 
       if (topicGroups.length === 0) {
-        const delay = Math.max(0, 1200 - (Date.now() - searchStart));
-        setTimeout(() => {
+        afterMinDelay(searchStart, () => {
           setPhase("idle");
           setError("Could not group videos by topic.");
-        }, delay);
+        });
         return;
       }
 
-      const delay = Math.max(0, 1200 - (Date.now() - searchStart));
-      setTimeout(() => onGroupedSearch(topicGroups, displayQuery), delay);
+      afterMinDelay(searchStart, () => onGroupedSearch(topicGroups, displayQuery));
     } catch {
-      const delay = Math.max(0, 1200 - (Date.now() - searchStart));
-      setTimeout(() => {
+      afterMinDelay(searchStart, () => {
         setPhase("idle");
         setError("Tag search failed. Check your API key.");
-      }, delay);
+      });
     }
   }
 
@@ -299,17 +300,7 @@ export default function SearchScreen({
     if (isLocked) return;
     const tagChannels = getChannelsByTag(tag);
     if (tagChannels.length === 0) return;
-    setError(null);
-    setPhase("thinking");
-    setIsTagSearch(true);
-    setOriginalQuery(`#${tag}`);
-    setRephrasedText("");
-    setTypewriterDone(false);
-    setRow1Visible(false);
-    setRow2Visible(false);
-    setRow3Visible(false);
-    setRow4Visible(false);
-    setTimeout(() => setRow1Visible(true), 0);
+    beginThinking(`#${tag}`, true);
     await doTagVideoSearch("", `#${tag}`, tagChannels);
   }
 
@@ -325,37 +316,13 @@ export default function SearchScreen({
       const restQuery = tagMatch[2].trim();
       const tagChannels = getChannelsByTag(tagName);
       if (tagChannels.length > 0) {
-        setError(null);
-        setPhase("thinking");
-        setIsTagSearch(true);
-        setOriginalQuery(query);
-        setRephrasedText("");
-        setTypewriterDone(false);
-        setRow1Visible(false);
-        setRow2Visible(false);
-        setRow3Visible(false);
-        setRow4Visible(false);
-        setTimeout(() => setRow1Visible(true), 0);
+        beginThinking(query, true);
         await doTagVideoSearch(restQuery, query, tagChannels);
         return;
       }
     }
 
-    setIsTagSearch(false);
-    setError(null);
-    setPhase("thinking");
-    setOriginalQuery(query);
-    setRephrasedText("");
-    setTypewriterDone(false);
-    setRow1Visible(false);
-    setRow2Visible(false);
-    setRow3Visible(false);
-    setRow4Visible(false);
-    setDetectedChannelName("");
-    setChannelRowDone(false);
-
-    setTimeout(() => setRow1Visible(true), 0);
-    setTimeout(() => setRow2Visible(true), 450);
+    beginThinking(query, false);
 
     const config = getConfig();
 
@@ -480,12 +447,7 @@ export default function SearchScreen({
         >
           <CogIcon size={16} />
         </button>
-        <WatchTimeCounter
-          todaySeconds={todaySeconds}
-          weekSeconds={weekSeconds}
-          dailyLimitSeconds={dailyLimitSeconds}
-          weeklyLimitSeconds={weeklyLimitSeconds}
-        />
+        <WatchTimeCounter />
       </div>
     </div>
   );
@@ -518,10 +480,6 @@ export default function SearchScreen({
         channelCandidates={channelCandidates}
         onSelect={handleChannelSelect}
         onBack={() => setPhase("idle")}
-        todaySeconds={todaySeconds}
-        weekSeconds={weekSeconds}
-        dailyLimitSeconds={dailyLimitSeconds}
-        weeklyLimitSeconds={weeklyLimitSeconds}
       />
     );
   }
