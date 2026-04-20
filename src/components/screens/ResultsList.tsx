@@ -12,9 +12,10 @@ interface ResultsListProps {
   query: string;
   onSelect(videoId: string): void;
   onBack(): void;
+  seenVideoIds: Set<string>;
 }
 
-export default function ResultsList({ results, query, onSelect, onBack }: ResultsListProps) {
+export default function ResultsList({ results, query, onSelect, onBack, seenVideoIds }: ResultsListProps) {
   const { isLocked } = useWatchLimit();
   const [filterOn, setFilterOn] = useState(true);
   const visibleResults = filterOn ? results.filter((r) => !r.isClickbait) : results;
@@ -49,6 +50,7 @@ export default function ResultsList({ results, query, onSelect, onBack }: Result
               onClick={() => onSelect(video.videoId)}
               animationDelay={ANIMATION_DELAYS[i] ?? "0.05s"}
               disabled={isLocked}
+              isSeen={seenVideoIds.has(video.videoId)}
             />
           ))
         )}

@@ -4,6 +4,7 @@ import { hydrate as hydrateConfig, isConfigured, getConfig } from "./services/co
 import { hydrate as hydrateWatchTime, getTodaySeconds, getWeekSeconds } from "./services/watchTime";
 import { hydrate as hydrateSubscriptions } from "./services/subscriptions";
 import { hydrate as hydrateApiUsage } from "./services/apiUsage";
+import { hydrateSeenVideos, persistSeenVideos } from "./services/seenVideos";
 import { getChannelLatestVideos } from "./services/youtube";
 import { classifyClickbait } from "./services/lmStudio";
 import { WatchLimitProvider } from "./context/WatchLimitContext";
@@ -37,12 +38,14 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [todaySeconds, setTodaySeconds] = useState(0);
   const [weekSeconds, setWeekSeconds] = useState(0);
+  const [seenVideoIds, setSeenVideoIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!ready) return;
     setScreen(isConfigured() ? "search" : "setup");
     setTodaySeconds(getTodaySeconds());
     setWeekSeconds(getWeekSeconds());
+    hydrateSeenVideos().then(setSeenVideoIds);
   }, [ready]);
 
   useEffect(() => {
@@ -73,6 +76,12 @@ export default function App() {
     const video = allVideos.find((r) => r.videoId === videoId) ?? null;
     setSelectedVideo(video);
     setScreen("player");
+    setSeenVideoIds((prev) => {
+      const next = new Set(prev);
+      next.add(videoId);
+      persistSeenVideos(next);
+      return next;
+    });
   }
 
   function handleBackFromResults() {
@@ -151,6 +160,7 @@ export default function App() {
           query={query}
           onSelect={handleSelect}
           onBack={handleBackFromResults}
+          seenVideoIds={seenVideoIds}
         />
       </WatchLimitProvider>
     );
@@ -164,6 +174,7 @@ export default function App() {
           query={query}
           onSelect={handleSelect}
           onBack={handleBackFromResults}
+          seenVideoIds={seenVideoIds}
         />
       </WatchLimitProvider>
     );

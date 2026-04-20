@@ -8,4 +8,5 @@ export const KEYS = {
   WATCH_TIME: "aitube_watch_time",
   SUBSCRIPTIONS: "aitube_subscriptions",
   API_QUOTA: "aitube_api_quota",
+  SEEN_VIDEOS: "aitube_seen_videos",
 } as const;

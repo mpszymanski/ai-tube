@@ -12,9 +12,10 @@ interface ChannelResultsScreenProps {
   query: string;
   onSelect(videoId: string): void;
   onBack(): void;
+  seenVideoIds: Set<string>;
 }
 
-export default function ChannelResultsScreen({ data, onSelect, onBack }: ChannelResultsScreenProps) {
+export default function ChannelResultsScreen({ data, onSelect, onBack, seenVideoIds }: ChannelResultsScreenProps) {
   const { isLocked } = useWatchLimit();
   const [filterOn, setFilterOn] = useState(true);
   const { channel, latestVideos } = data;
@@ -91,6 +92,7 @@ export default function ChannelResultsScreen({ data, onSelect, onBack }: Channel
                 onClick={() => onSelect(video.videoId)}
                 animationDelay={ANIMATION_DELAYS[i] ?? "0.05s"}
                 disabled={isLocked}
+                isSeen={seenVideoIds.has(video.videoId)}
               />
             ))
           )}

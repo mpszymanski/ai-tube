@@ -6,12 +6,14 @@ interface ResultCardProps {
   onClick(): void;
   animationDelay?: string;
   disabled?: boolean;
+  isSeen?: boolean;
 }
 
-export default function ResultCard({ video, onClick, animationDelay, disabled }: ResultCardProps) {
+export default function ResultCard({ video, onClick, animationDelay, disabled, isSeen }: ResultCardProps) {
   const duration = formatDuration(video.duration);
   const views = formatViewCount(video.viewCount);
   const posted = formatPublishedAt(video.publishedAt);
+  const showSeenStyle = !!isSeen && !disabled;
 
   return (
     <button
@@ -28,9 +30,9 @@ export default function ResultCard({ video, onClick, animationDelay, disabled }:
         padding: 12,
         cursor: disabled ? "not-allowed" : "pointer",
         textAlign: "left",
-        animation: disabled ? "none" : `rowIn 0.4s var(--ease) forwards`,
-        animationDelay: disabled ? undefined : (animationDelay ?? "0s"),
-        opacity: disabled ? 0.5 : 0,
+        animation: (disabled || showSeenStyle) ? "none" : `rowIn 0.4s var(--ease) forwards`,
+        animationDelay: (disabled || showSeenStyle) ? undefined : (animationDelay ?? "0s"),
+        opacity: disabled ? 0.5 : showSeenStyle ? 0.75 : 0,
         transition: "background 0.15s var(--ease), border-color 0.15s var(--ease)",
       }}
       onMouseEnter={disabled ? undefined : (e) => {
@@ -47,8 +49,30 @@ export default function ResultCard({ video, onClick, animationDelay, disabled }:
         <img
           src={video.thumbnailUrl}
           alt={video.title}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: showSeenStyle ? "grayscale(70%)" : "none" }}
         />
+        {isSeen && (
+          <span
+            style={{
+              position: "absolute",
+              top: 4,
+              left: 4,
+              background: "rgba(0,0,0,0.75)",
+              color: "#fff",
+              fontSize: 10,
+              fontWeight: 600,
+              fontFamily: "var(--font-mono)",
+              padding: "2px 6px",
+              borderRadius: 3,
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              lineHeight: 1,
+            }}
+          >
+            ✓ Watched
+          </span>
+        )}
         {duration && (
           <span
             style={{
