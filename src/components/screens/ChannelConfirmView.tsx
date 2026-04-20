@@ -1,7 +1,7 @@
 import { ChannelResult } from "../../types";
 import BackButton from "../ui/BackButton";
 import WatchTimeCounter from "../widgets/WatchTimeCounter";
-import TagPicker from "../widgets/TagPicker";
+import SubscribeButton from "../widgets/SubscribeButton";
 
 interface ChannelConfirmViewProps {
   channelCandidates: ChannelResult[];
@@ -122,7 +122,7 @@ export default function ChannelConfirmView({
                       </span>
                     )}
                   </div>
-                  <TagPicker channel={ch} size="sm" />
+                  <SubscribeButton channel={ch} size="sm" />
                 </div>
               ))}
             </div>

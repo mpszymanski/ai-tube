@@ -3,7 +3,7 @@ import { ChannelResultWithVideos } from "../../types";
 import ResultCard from "../widgets/ResultCard";
 import Toggle from "../ui/Toggle";
 import ScreenShell from "../layout/ScreenShell";
-import TagPicker from "../widgets/TagPicker";
+import SubscribeButton from "../widgets/SubscribeButton";
 import { ANIMATION_DELAYS } from "../../utils/constants";
 import { useWatchLimit } from "../../context/WatchLimitContext";
 
@@ -63,7 +63,7 @@ export default function ChannelResultsScreen({ data, onSelect, onBack }: Channel
                 </span>
               )}
             </div>
-            <TagPicker channel={channel} />
+            <SubscribeButton channel={channel} />
           </div>
 
           {/* Videos header */}

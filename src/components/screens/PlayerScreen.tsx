@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { VideoResult } from "../../types";
 import { addSeconds } from "../../services/watchTime";
 import ScreenShell from "../layout/ScreenShell";
-import TagPicker from "../widgets/TagPicker";
+import SubscribeButton from "../widgets/SubscribeButton";
 import { formatViewCount, formatPublishedAt } from "../../utils/formatters";
 
 declare global {
@@ -120,7 +120,7 @@ export default function PlayerScreen({ video, onBack }: PlayerScreenProps) {
                 </div>
               </div>
               {video.channelId && (
-                <TagPicker
+                <SubscribeButton
                   channel={{
                     channelId: video.channelId,
                     title: video.channelTitle,

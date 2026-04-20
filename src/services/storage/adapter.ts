@@ -6,6 +6,6 @@ export interface StorageAdapter {
 export const KEYS = {
   CONFIG: "aitube_config",
   WATCH_TIME: "aitube_watch_time",
-  TAGGED_CHANNELS: "aitube_tagged_channels",
+  SUBSCRIPTIONS: "aitube_subscriptions",
   API_QUOTA: "aitube_api_quota",
 } as const;

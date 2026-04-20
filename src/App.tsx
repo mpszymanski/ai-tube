@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { AppScreen, VideoResult, ChannelResult, ChannelResultWithVideos, TopicGroup } from "./types";
+import { AppScreen, VideoResult, ChannelResult, ChannelResultWithVideos } from "./types";
 import { hydrate as hydrateConfig, isConfigured, getConfig } from "./services/config";
 import { hydrate as hydrateWatchTime, getTodaySeconds, getWeekSeconds } from "./services/watchTime";
-import { hydrate as hydrateTaggedChannels } from "./services/taggedChannels";
+import { hydrate as hydrateSubscriptions } from "./services/subscriptions";
 import { hydrate as hydrateApiUsage } from "./services/apiUsage";
 import { getChannelLatestVideos } from "./services/youtube";
 import { classifyClickbait } from "./services/lmStudio";
@@ -10,7 +10,6 @@ import { WatchLimitProvider } from "./context/WatchLimitContext";
 import SetupScreen from "./components/screens/SetupScreen";
 import SearchScreen from "./components/screens/SearchScreen";
 import ResultsList from "./components/screens/ResultsList";
-import GroupedResultsList from "./components/screens/GroupedResultsList";
 import PlayerScreen from "./components/screens/PlayerScreen";
 import ChannelResultsScreen from "./components/screens/ChannelResultsScreen";
 import SubscriptionsScreen from "./components/screens/SubscriptionsScreen";
@@ -19,7 +18,7 @@ async function bootstrapStorage(): Promise<void> {
   await Promise.all([
     hydrateConfig(),
     hydrateWatchTime(),
-    hydrateTaggedChannels(),
+    hydrateSubscriptions(),
     hydrateApiUsage(),
   ]);
 }
@@ -33,7 +32,6 @@ export default function App() {
 
   const [screen, setScreen] = useState<AppScreen>("search");
   const [results, setResults] = useState<VideoResult[]>([]);
-  const [groupedResults, setGroupedResults] = useState<TopicGroup[]>([]);
   const [channelData, setChannelData] = useState<ChannelResultWithVideos | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoResult | null>(null);
   const [query, setQuery] = useState("");
@@ -57,16 +55,8 @@ export default function App() {
 
   function handleSearch(newResults: VideoResult[], searchQuery: string) {
     setResults(newResults);
-    setGroupedResults([]);
     setQuery(searchQuery);
     setScreen("results");
-  }
-
-  function handleGroupedSearch(groups: TopicGroup[], searchQuery: string) {
-    setGroupedResults(groups);
-    setResults([]);
-    setQuery(searchQuery);
-    setScreen("grouped-results");
   }
 
   function handleChannelSearch(data: ChannelResultWithVideos, searchQuery: string) {
@@ -79,8 +69,6 @@ export default function App() {
     const allVideos =
       screen === "channel-results" && channelData
         ? channelData.latestVideos
-        : screen === "grouped-results"
-        ? groupedResults.flatMap((g) => g.videos)
         : results;
     const video = allVideos.find((r) => r.videoId === videoId) ?? null;
     setSelectedVideo(video);
@@ -89,7 +77,6 @@ export default function App() {
 
   function handleBackFromResults() {
     setResults([]);
-    setGroupedResults([]);
     setChannelData(null);
     setQuery("");
     setScreen("search");
@@ -98,8 +85,6 @@ export default function App() {
   function handleBackFromPlayer() {
     if (channelData) {
       setScreen("channel-results");
-    } else if (groupedResults.length > 0) {
-      setScreen("grouped-results");
     } else {
       setScreen("results");
     }
@@ -150,7 +135,6 @@ export default function App() {
         <div className="app">
           <SearchScreen
             onSearch={handleSearch}
-            onGroupedSearch={handleGroupedSearch}
             onChannelSearch={handleChannelSearch}
             onSubscriptions={() => setScreen("subscriptions")}
           />
@@ -164,19 +148,6 @@ export default function App() {
       <WatchLimitProvider value={shellValue}>
         <ResultsList
           results={results}
-          query={query}
-          onSelect={handleSelect}
-          onBack={handleBackFromResults}
-        />
-      </WatchLimitProvider>
-    );
-  }
-
-  if (screen === "grouped-results") {
-    return (
-      <WatchLimitProvider value={shellValue}>
-        <GroupedResultsList
-          groups={groupedResults}
           query={query}
           onSelect={handleSelect}
           onBack={handleBackFromResults}

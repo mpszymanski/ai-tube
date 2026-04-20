@@ -1,5 +1,5 @@
 import Logo from "../ui/Logo";
-import { tagStyle } from "../../utils/tagColor";
+import { ChannelResult } from "../../types";
 
 interface ApiUsage {
   used: number;
@@ -7,7 +7,7 @@ interface ApiUsage {
 }
 
 interface SearchIdleViewProps {
-  allTags: string[];
+  subscribedChannels: ChannelResult[];
   isLocked: boolean;
   apiUsage: ApiUsage;
   error: string | null;
@@ -16,7 +16,7 @@ interface SearchIdleViewProps {
   inputRef: React.RefObject<HTMLInputElement | null>;
   onInputChange(value: string): void;
   onSubmit(e: React.FormEvent): void;
-  onTagClick(tag: string): void;
+  onChannelClick(channel: ChannelResult): void;
   onFocus(): void;
   onBlur(): void;
 }
@@ -45,7 +45,7 @@ function SearchIcon({ active }: { active: boolean }) {
 }
 
 export default function SearchIdleView({
-  allTags,
+  subscribedChannels,
   isLocked,
   apiUsage,
   error,
@@ -54,7 +54,7 @@ export default function SearchIdleView({
   inputRef,
   onInputChange,
   onSubmit,
-  onTagClick,
+  onChannelClick,
   onFocus,
   onBlur,
 }: SearchIdleViewProps) {
@@ -90,7 +90,7 @@ export default function SearchIdleView({
         >
           <Logo size="xl" />
         </div>
-        {allTags.length > 0 && (
+        {subscribedChannels.length > 0 && (
           <div
             style={{
               display: "flex",
@@ -101,41 +101,50 @@ export default function SearchIdleView({
               animation: "rowIn 0.5s var(--ease) 80ms both",
             }}
           >
-            {allTags.map((tag) => {
-              const s = tagStyle(tag);
-              return (
-                <button
-                  key={tag}
-                  type="button"
-                  disabled={isLocked}
-                  onClick={() => onTagClick(tag)}
-                  style={{
-                    fontSize: 12,
-                    fontFamily: "var(--font-mono)",
-                    padding: "5px 11px",
-                    borderRadius: "var(--radius-sm)",
-                    border: `1px solid ${s.borderColor}`,
-                    color: s.color,
-                    background: s.background,
-                    cursor: isLocked ? "not-allowed" : "pointer",
-                    opacity: isLocked ? 0.45 : 1,
-                    transition:
-                      "transform 0.18s var(--ease), filter 0.18s var(--ease)",
-                    willChange: "transform",
-                  }}
-                  onMouseEnter={isLocked ? undefined : (e) => {
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                    e.currentTarget.style.filter = "brightness(1.2)";
-                  }}
-                  onMouseLeave={isLocked ? undefined : (e) => {
-                    e.currentTarget.style.transform = "";
-                    e.currentTarget.style.filter = "";
-                  }}
-                >
-                  #{tag}
-                </button>
-              );
-            })}
+            {subscribedChannels.map((ch) => (
+              <button
+                key={ch.channelId}
+                type="button"
+                disabled={isLocked}
+                onClick={() => onChannelClick(ch)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 12,
+                  fontFamily: "var(--font-mono)",
+                  padding: "5px 10px 5px 6px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-dim)",
+                  background: "var(--bg-elev)",
+                  cursor: isLocked ? "not-allowed" : "pointer",
+                  opacity: isLocked ? 0.45 : 1,
+                  transition:
+                    "transform 0.18s var(--ease), filter 0.18s var(--ease)",
+                  willChange: "transform",
+                }}
+                onMouseEnter={isLocked ? undefined : (e) => {
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.filter = "brightness(1.2)";
+                }}
+                onMouseLeave={isLocked ? undefined : (e) => {
+                  e.currentTarget.style.transform = "";
+                  e.currentTarget.style.filter = "";
+                }}
+              >
+                {ch.thumbnailUrl && (
+                  <img
+                    src={ch.thumbnailUrl}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    style={{ width: 18, height: 18, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                    onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  />
+                )}
+                {ch.title}
+              </button>
+            ))}
           </div>
         )}
         <form

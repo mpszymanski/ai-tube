@@ -10,7 +10,6 @@ interface SearchThinkingViewProps {
   typewriterDone: boolean;
   detectedChannelName: string;
   channelRowDone: boolean;
-  isTagSearch: boolean;
   pendingIntent: "videos" | "channel" | "channel-videos";
   error: string | null;
 }
@@ -25,7 +24,6 @@ export default function SearchThinkingView({
   typewriterDone,
   detectedChannelName,
   channelRowDone,
-  isTagSearch,
   pendingIntent,
   error,
 }: SearchThinkingViewProps) {
@@ -65,11 +63,9 @@ export default function SearchThinkingView({
         {row4Visible && (
           <ThinkingRow label="Search" status="pending">
             <span style={{ color: "var(--text-dim)" }}>
-              {isTagSearch
-                ? "Fetching recent videos · grouping by topic…"
-                : pendingIntent === "channel"
-                  ? "Loading latest videos…"
-                  : "Querying YouTube · filtering clickbait…"}
+              {pendingIntent === "channel"
+                ? "Loading latest videos…"
+                : "Querying YouTube · filtering clickbait…"}
             </span>
           </ThinkingRow>
         )}

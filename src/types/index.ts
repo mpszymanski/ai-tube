@@ -22,12 +22,7 @@ export interface AppConfig {
   weeklyLimitSeconds: number;
 }
 
-export type AppScreen = "setup" | "search" | "results" | "channel-results" | "player" | "subscriptions" | "grouped-results";
-
-export interface TopicGroup {
-  topic: string;
-  videos: VideoResult[];
-}
+export type AppScreen = "setup" | "search" | "results" | "channel-results" | "player" | "subscriptions";
 
 export type SearchIntent = "videos" | "channel" | "channel-videos";
 
@@ -43,10 +38,3 @@ export interface ChannelResultWithVideos {
   latestVideos: VideoResult[];
 }
 
-export interface TaggedChannel {
-  channelId: string;
-  title: string;
-  thumbnailUrl: string;
-  description: string;
-  tags: string[];
-}
