@@ -164,7 +164,6 @@ export async function searchYouTube(
   url.searchParams.set("part", "snippet");
   url.searchParams.set("q", query);
   url.searchParams.set("type", "video");
-  url.searchParams.set("order", "date");
   url.searchParams.set("maxResults", "10");
   if (channelId) url.searchParams.set("channelId", channelId);
   url.searchParams.set("key", apiKey);
