@@ -8,6 +8,8 @@ import { hydrateSeenVideos, persistSeenVideos } from "./services/seenVideos";
 import { getChannelLatestVideos } from "./services/youtube";
 import { classifyClickbait } from "./services/lmStudio";
 import { ensureModelServer } from "./services/modelServer";
+import { checkModelExists, downloadModel, type DownloadProgress } from "./services/modelDownloader";
+import { invoke } from "@tauri-apps/api/core";
 import { WatchLimitProvider } from "./context/WatchLimitContext";
 import SetupScreen from "./components/screens/SetupScreen";
 import SearchScreen from "./components/screens/SearchScreen";
@@ -27,13 +29,30 @@ async function bootstrapStorage(): Promise<void> {
 
 export default function App() {
   const [ready, setReady] = useState(false);
-  const [modelStatus, setModelStatus] = useState<"starting" | "ready" | "error">("starting");
+  const [modelStatus, setModelStatus] = useState<"checking" | "downloading" | "starting" | "ready" | "error">("checking");
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
   useEffect(() => {
     bootstrapStorage().then(() => setReady(true));
-    ensureModelServer()
-      .then(() => setModelStatus("ready"))
-      .catch(() => setModelStatus("error"));
+
+    (async () => {
+      try {
+        const info = await invoke("get_debug_info");
+        console.log("[boot] debug info:", info);
+        const exists = await checkModelExists();
+        console.log("[boot] model exists:", exists);
+        if (!exists) {
+          setModelStatus("downloading");
+          await downloadModel(setDownloadProgress);
+        }
+        setModelStatus("starting");
+        await ensureModelServer();
+        setModelStatus("ready");
+      } catch (e) {
+        console.error("[boot] model pipeline failed:", e);
+        setModelStatus("error");
+      }
+    })();
   }, []);
 
   const [screen, setScreen] = useState<AppScreen>("search");
@@ -128,8 +147,25 @@ export default function App() {
   }
 
   const modelBanner = modelStatus !== "ready" && (
-    <div style={{ position: "fixed", bottom: 12, right: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 12px", fontSize: 12, color: modelStatus === "error" ? "var(--text-warn, #f59e0b)" : "var(--text-dim)", zIndex: 9999 }}>
-      {modelStatus === "error" ? "AI model failed to start" : "Starting AI model\u2026"}
+    <div style={{ position: "fixed", bottom: 12, right: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 14px", fontSize: 12, color: modelStatus === "error" ? "var(--text-warn, #f59e0b)" : "var(--text-dim)", zIndex: 9999, minWidth: 220 }}>
+      {modelStatus === "error" && "AI model failed to start"}
+      {modelStatus === "checking" && "Checking AI model…"}
+      {modelStatus === "starting" && "Starting AI model…"}
+      {modelStatus === "downloading" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span>Downloading AI model…</span>
+          {downloadProgress && (
+            <>
+              <div style={{ background: "var(--border)", borderRadius: 3, height: 4, overflow: "hidden" }}>
+                <div style={{ background: "var(--accent)", height: "100%", width: `${Math.round((downloadProgress.downloaded / downloadProgress.total) * 100)}%`, transition: "width 0.3s" }} />
+              </div>
+              <span style={{ fontSize: 11 }}>
+                {(downloadProgress.downloaded / 1e9).toFixed(2)} / {(downloadProgress.total / 1e9).toFixed(2)} GB
+              </span>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 
