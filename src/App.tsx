@@ -7,6 +7,7 @@ import { hydrate as hydrateApiUsage } from "./services/apiUsage";
 import { hydrateSeenVideos, persistSeenVideos } from "./services/seenVideos";
 import { getChannelLatestVideos } from "./services/youtube";
 import { classifyClickbait } from "./services/lmStudio";
+import { ensureModelServer } from "./services/modelServer";
 import { WatchLimitProvider } from "./context/WatchLimitContext";
 import SetupScreen from "./components/screens/SetupScreen";
 import SearchScreen from "./components/screens/SearchScreen";
@@ -26,9 +27,13 @@ async function bootstrapStorage(): Promise<void> {
 
 export default function App() {
   const [ready, setReady] = useState(false);
+  const [modelStatus, setModelStatus] = useState<"starting" | "ready" | "error">("starting");
 
   useEffect(() => {
     bootstrapStorage().then(() => setReady(true));
+    ensureModelServer()
+      .then(() => setModelStatus("ready"))
+      .catch(() => setModelStatus("error"));
   }, []);
 
   const [screen, setScreen] = useState<AppScreen>("search");
@@ -104,7 +109,7 @@ export default function App() {
     try {
       const allResults = await getChannelLatestVideos(channel.channelId, config.youtubeApiKey, channel.thumbnailUrl);
       const titles = allResults.map((r) => r.title);
-      const classified = await classifyClickbait(titles, config.lmStudioUrl);
+      const classified = await classifyClickbait(titles);
       const clickbaitMap = new Map(classified.map((item) => [item.title, item.clickbait]));
       const latestVideos = allResults.map((r) => ({ ...r, isClickbait: clickbaitMap.get(r.title) ?? false }));
       setChannelData({ channel, latestVideos });
@@ -122,6 +127,12 @@ export default function App() {
     return <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }} />;
   }
 
+  const modelBanner = modelStatus !== "ready" && (
+    <div style={{ position: "fixed", bottom: 12, right: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 12px", fontSize: 12, color: modelStatus === "error" ? "var(--text-warn, #f59e0b)" : "var(--text-dim)", zIndex: 9999 }}>
+      {modelStatus === "error" ? "AI model failed to start" : "Starting AI model\u2026"}
+    </div>
+  );
+
   const shellValue = { todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSettings: () => setScreen("setup") };
 
   if (screen === "setup") {
@@ -134,6 +145,7 @@ export default function App() {
             onBack={wasConfigured ? () => setScreen("search") : undefined}
           />
         </div>
+        {modelBanner}
       </WatchLimitProvider>
     );
   }
@@ -148,6 +160,7 @@ export default function App() {
             onSubscriptions={() => setScreen("subscriptions")}
           />
         </div>
+        {modelBanner}
       </WatchLimitProvider>
     );
   }
@@ -162,6 +175,7 @@ export default function App() {
           onBack={handleBackFromResults}
           seenVideoIds={seenVideoIds}
         />
+        {modelBanner}
       </WatchLimitProvider>
     );
   }
@@ -176,6 +190,7 @@ export default function App() {
           onBack={handleBackFromResults}
           seenVideoIds={seenVideoIds}
         />
+        {modelBanner}
       </WatchLimitProvider>
     );
   }
@@ -199,6 +214,7 @@ export default function App() {
           onBack={handleBackFromPlayer}
           onGoToChannel={selectedVideo.channelId ? handleGoToChannelFromPlayer : undefined}
         />
+        {modelBanner}
       </WatchLimitProvider>
     );
   }
@@ -212,6 +228,7 @@ export default function App() {
             onChannelSelect={handleChannelSelectFromSubscriptions}
           />
         </div>
+        {modelBanner}
       </WatchLimitProvider>
     );
   }

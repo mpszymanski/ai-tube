@@ -15,7 +15,6 @@ beforeEach(async () => {
 describe("getConfig", () => {
   it("returns defaults when nothing is stored", () => {
     const config = getConfig();
-    expect(config.lmStudioUrl).toBe("http://localhost:1234");
     expect(config.youtubeApiKey).toBe("");
   });
 
@@ -24,7 +23,6 @@ describe("getConfig", () => {
     _reset();
     await hydrate(adapter);
     const config = getConfig();
-    expect(config.lmStudioUrl).toBe("http://localhost:1234");
     expect(config.youtubeApiKey).toBe("my-key");
   });
 
@@ -33,16 +31,14 @@ describe("getConfig", () => {
     _reset();
     await hydrate(adapter);
     const config = getConfig();
-    expect(config.lmStudioUrl).toBe("http://localhost:1234");
     expect(config.youtubeApiKey).toBe("");
   });
 });
 
 describe("saveConfig", () => {
   it("saves and reads back values", () => {
-    saveConfig({ lmStudioUrl: "http://localhost:9999", youtubeApiKey: "abc", dailyLimitSeconds: 3600, weeklyLimitSeconds: 14400 });
+    saveConfig({ youtubeApiKey: "abc", dailyLimitSeconds: 3600, weeklyLimitSeconds: 14400 });
     const config = getConfig();
-    expect(config.lmStudioUrl).toBe("http://localhost:9999");
     expect(config.youtubeApiKey).toBe("abc");
   });
 });
@@ -53,7 +49,7 @@ describe("isConfigured", () => {
   });
 
   it("returns true after saving a key", () => {
-    saveConfig({ lmStudioUrl: "http://localhost:1234", youtubeApiKey: "AIzaSyFakeKey12345678", dailyLimitSeconds: 3600, weeklyLimitSeconds: 14400 });
+    saveConfig({ youtubeApiKey: "AIzaSyFakeKey12345678", dailyLimitSeconds: 3600, weeklyLimitSeconds: 14400 });
     expect(isConfigured()).toBe(true);
   });
 });

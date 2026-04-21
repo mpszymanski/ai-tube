@@ -15,22 +15,23 @@ const SYSTEM_PROMPT_GROUP_TOPICS =
 const SYSTEM_PROMPT_CLICKBAIT =
   'You are a clickbait detector. You will receive a JSON array of YouTube video titles. For each title, determine if it is clickbait. Clickbait indicators:\n- ALL CAPS words used for emphasis (e.g., "You WON\'T BELIEVE")\n- Vague teasers that withhold information (e.g., "What happens next will shock you")\n- Exaggerated superlatives (e.g., "THE BEST EVER", "INSANE", "DESTROYED")\n- Emotional manipulation (e.g., "This made me cry")\n- Misleading curiosity gaps (e.g., "Doctors don\'t want you to know this")\n- Excessive punctuation (!!!, ???)\n\nRespond ONLY with a JSON array of objects: [{"title": "...", "clickbait": true/false}]\nNo additional text, no markdown formatting.';
 
+const MODEL_API_URL = "http://localhost:11434";
+
 async function callLmStudio<T>(
-  apiUrl: string,
   systemPrompt: string,
   userContent: string,
   maxTokens: number,
   fallback: T,
 ): Promise<T> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), 60000);
   try {
-    const res = await fetch(`${apiUrl}/v1/chat/completions`, {
+    const res = await fetch(`${MODEL_API_URL}/v1/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
-        model: "local-model",
+        model: "Qwen3-4B-Instruct-2507-Q8_0",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userContent },
@@ -41,7 +42,9 @@ async function callLmStudio<T>(
     });
     clearTimeout(timeout);
     const data = await res.json();
-    const raw = data.choices[0].message.content.trim();
+    const raw = data.choices[0].message.content
+      .replace(/<think>[\s\S]*?<\/think>/g, "")
+      .trim();
     return JSON.parse(raw) as T;
   } catch {
     clearTimeout(timeout);
@@ -51,9 +54,8 @@ async function callLmStudio<T>(
 
 export async function analyzeQuery(
   userInput: string,
-  apiUrl: string,
 ): Promise<{ videoQuery: string; intent: "videos" | "channel" | "channel-videos"; channelName?: string }> {
-  const parsed = await callLmStudio(apiUrl, SYSTEM_PROMPT_ANALYZE, userInput, 100, null);
+  const parsed = await callLmStudio(SYSTEM_PROMPT_ANALYZE, userInput, 2000, null);
   if (!parsed || typeof parsed !== "object") {
     return { videoQuery: userInput, intent: "videos" };
   }
@@ -69,16 +71,14 @@ export async function analyzeQuery(
 export async function groupVideosByTopic(
   videos: Array<{ videoId: string; title: string; channelTitle: string }>,
   filter: string,
-  apiUrl: string,
 ): Promise<Array<{ topic: string; videoIds: string[] }>> {
   if (videos.length === 0) return [];
   const fallback = [{ topic: "Recent Videos", videoIds: videos.map((v) => v.videoId) }];
   const userContent = JSON.stringify({ videos, ...(filter ? { filter } : {}) });
   const parsed = await callLmStudio<{ groups: Array<{ topic: string; videoIds: string[] }> } | null>(
-    apiUrl,
     SYSTEM_PROMPT_GROUP_TOPICS,
     userContent,
-    500,
+    3000,
     null,
   );
   if (!parsed || !Array.isArray(parsed.groups)) return fallback;
@@ -92,14 +92,12 @@ export async function groupVideosByTopic(
 
 export async function classifyClickbait(
   titles: string[],
-  apiUrl: string,
 ): Promise<{ title: string; clickbait: boolean }[]> {
   const fallback = titles.map((title) => ({ title, clickbait: false }));
   const parsed = await callLmStudio<unknown>(
-    apiUrl,
     SYSTEM_PROMPT_CLICKBAIT,
     JSON.stringify(titles),
-    1000,
+    4000,
     null,
   );
   if (!Array.isArray(parsed)) return fallback;

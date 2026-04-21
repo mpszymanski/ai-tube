@@ -12,7 +12,6 @@ export default function SetupScreen({ onSave, onBack }: SetupScreenProps) {
   const { isLocked } = useWatchLimit();
   const config = getConfig();
   const [apiKey, setApiKey] = useState(config.youtubeApiKey);
-  const [lmUrl, setLmUrl] = useState(config.lmStudioUrl);
   const [dailyMinutes, setDailyMinutes] = useState(Math.round(config.dailyLimitSeconds / 60));
   const [weeklyMinutes, setWeeklyMinutes] = useState(Math.round(config.weeklyLimitSeconds / 60));
   const [apiKeyTouched, setApiKeyTouched] = useState(false);
@@ -24,7 +23,6 @@ export default function SetupScreen({ onSave, onBack }: SetupScreenProps) {
     if (!canSave) return;
     saveConfig({
       youtubeApiKey: apiKey.trim(),
-      lmStudioUrl: lmUrl.trim() || "http://localhost:1234",
       dailyLimitSeconds: Math.max(1, dailyMinutes) * 60,
       weeklyLimitSeconds: Math.max(1, weeklyMinutes) * 60,
     });
@@ -112,20 +110,6 @@ export default function SetupScreen({ onSave, onBack }: SetupScreenProps) {
                 Get a free key at console.cloud.google.com
               </span>
             )}
-          </div>
-
-          {/* LM Studio URL */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--text-dim)" }}>LM Studio URL</label>
-            <input
-              type="text"
-              value={lmUrl}
-              onChange={(e) => setLmUrl(e.target.value)}
-              style={inputBase}
-            />
-            <span style={{ fontSize: 11, color: "var(--text-mute)" }}>
-              Your local model endpoint — used to rephrase queries.
-            </span>
           </div>
 
           {/* Usage Limits */}

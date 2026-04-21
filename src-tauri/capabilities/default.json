@@ -9,6 +9,8 @@
     "fs:allow-app-read-recursive",
     "fs:allow-app-write-recursive",
     "fs:allow-mkdir",
-    "fs:allow-exists"
+    "fs:allow-exists",
+    "shell:allow-execute",
+    "shell:allow-spawn"
   ]
 }

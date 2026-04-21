@@ -128,7 +128,7 @@ export default function SearchScreen({
         channel.thumbnailUrl,
       );
       const titles = allResults.map((r) => r.title);
-      const classified = await classifyClickbait(titles, config.lmStudioUrl);
+      const classified = await classifyClickbait(titles);
       const clickbaitMap = new Map(
         classified.map((item) => [item.title, item.clickbait]),
       );
@@ -161,7 +161,7 @@ export default function SearchScreen({
         channelId,
       );
       const titles = allResults.map((r) => r.title);
-      const classified = await classifyClickbait(titles, config.lmStudioUrl);
+      const classified = await classifyClickbait(titles);
       const clickbaitMap = new Map(
         classified.map((item) => [item.title, item.clickbait]),
       );
@@ -219,7 +219,7 @@ export default function SearchScreen({
     let intent: "videos" | "channel" | "channel-videos" = "videos";
     let channelName: string | undefined;
     try {
-      const result = await analyzeQuery(query, config.lmStudioUrl);
+      const result = await analyzeQuery(query);
       videoQuery = result.videoQuery;
       intent = result.intent;
       channelName = result.channelName;

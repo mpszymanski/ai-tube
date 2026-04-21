@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Large bundled assets (binaries + model weights — not tracked in git)
+src-tauri/binaries/
+src-tauri/resources/models/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
