@@ -15,9 +15,10 @@ declare global {
 interface PlayerScreenProps {
   video: VideoResult;
   onBack(): void;
+  onGoToChannel?(): void;
 }
 
-export default function PlayerScreen({ video, onBack }: PlayerScreenProps) {
+export default function PlayerScreen({ video, onBack, onGoToChannel }: PlayerScreenProps) {
   const playerDivRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -120,14 +121,42 @@ export default function PlayerScreen({ video, onBack }: PlayerScreenProps) {
                 </div>
               </div>
               {video.channelId && (
-                <SubscribeButton
-                  channel={{
-                    channelId: video.channelId,
-                    title: video.channelTitle,
-                    thumbnailUrl: video.channelThumbnailUrl ?? "",
-                    description: "",
-                  }}
-                />
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  {onGoToChannel && (
+                    <button
+                      onClick={onGoToChannel}
+                      style={{
+                        fontSize: 12,
+                        fontFamily: "var(--font-mono)",
+                        padding: "6px 14px",
+                        borderRadius: "var(--radius-sm)",
+                        border: "1px solid var(--border-strong)",
+                        background: "transparent",
+                        color: "var(--text-dim)",
+                        cursor: "pointer",
+                        transition: "border-color 0.15s, color 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "var(--text-dim)";
+                        e.currentTarget.style.color = "var(--text)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "var(--border-strong)";
+                        e.currentTarget.style.color = "var(--text-dim)";
+                      }}
+                    >
+                      Go to channel
+                    </button>
+                  )}
+                  <SubscribeButton
+                    channel={{
+                      channelId: video.channelId,
+                      title: video.channelTitle,
+                      thumbnailUrl: video.channelThumbnailUrl ?? "",
+                      description: "",
+                    }}
+                  />
+                </div>
               )}
             </div>
           </div>

@@ -15,7 +15,8 @@ export default function SubscribeButton({ channel, size = "md" }: SubscribeButto
     return subscribeToChanges(() => setSubscribed(isSubscribed(channel.channelId)));
   }, [channel.channelId]);
 
-  function handleClick() {
+  function handleClick(e: React.MouseEvent) {
+    e.stopPropagation();
     if (subscribed) {
       unsubscribe(channel.channelId);
     } else {

@@ -180,12 +180,24 @@ export default function App() {
     );
   }
 
+  async function handleGoToChannelFromPlayer() {
+    if (!selectedVideo?.channelId) return;
+    const channel: ChannelResult = {
+      channelId: selectedVideo.channelId,
+      title: selectedVideo.channelTitle,
+      thumbnailUrl: selectedVideo.channelThumbnailUrl ?? "",
+      description: "",
+    };
+    await handleChannelSelectFromSubscriptions(channel);
+  }
+
   if (screen === "player" && selectedVideo) {
     return (
       <WatchLimitProvider value={shellValue}>
         <PlayerScreen
           video={selectedVideo}
           onBack={handleBackFromPlayer}
+          onGoToChannel={selectedVideo.channelId ? handleGoToChannelFromPlayer : undefined}
         />
       </WatchLimitProvider>
     );
