@@ -4,6 +4,7 @@ import { getConfig } from "../../services/config";
 import { analyzeQuery, classifyClickbait } from "../../services/lmStudio";
 import { searchYouTube, searchChannels, getChannelLatestVideos } from "../../services/youtube";
 import { getSubscriptions, subscribeToChanges } from "../../services/subscriptions";
+import { getHistory, addToHistory } from "../../services/searchHistory";
 import WatchTimeCounter from "../widgets/WatchTimeCounter";
 import SettingsButton from "../ui/SettingsButton";
 import { getUsage } from "../../services/apiUsage";
@@ -63,6 +64,7 @@ export default function SearchScreen({
   const [pendingPublishedAfter, setPendingPublishedAfter] = useState<string | undefined>(undefined);
 
   const [apiUsage, setApiUsage] = useState(() => getUsage());
+  const [history, setHistory] = useState<string[]>(() => getHistory());
 
   useEffect(() => {
     if (phase === "idle") setApiUsage(getUsage());
@@ -227,6 +229,8 @@ export default function SearchScreen({
     const query = inputValue.trim();
     if (!query) return;
 
+    addToHistory(query);
+    setHistory(getHistory());
     beginThinking(query);
 
     const config = getConfig();
@@ -379,6 +383,7 @@ export default function SearchScreen({
         inputValue={inputValue}
         focused={focused}
         inputRef={inputRef}
+        history={history}
         onInputChange={setInputValue}
         onSubmit={handleSubmit}
         onChannelClick={handleChannelClick}

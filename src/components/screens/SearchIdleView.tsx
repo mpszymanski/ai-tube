@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import Logo from "../ui/Logo";
 import { ChannelResult } from "../../types";
 
@@ -14,6 +15,7 @@ interface SearchIdleViewProps {
   inputValue: string;
   focused: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  history: string[];
   onInputChange(value: string): void;
   onSubmit(e: React.FormEvent): void;
   onChannelClick(channel: ChannelResult): void;
@@ -44,6 +46,15 @@ function SearchIcon({ active }: { active: boolean }) {
   );
 }
 
+function HistoryIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, opacity: 0.5 }}>
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 5v3.5l2 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function SearchIdleView({
   subscribedChannels,
   isLocked,
@@ -52,12 +63,48 @@ export default function SearchIdleView({
   inputValue,
   focused,
   inputRef,
+  history,
   onInputChange,
   onSubmit,
   onChannelClick,
   onFocus,
   onBlur,
 }: SearchIdleViewProps) {
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [hoverIndex, setHoverIndex] = useState(-1);
+  const savedInputRef = useRef("");
+
+  const filteredHistory = inputValue.trim()
+    ? history.filter((q) => q.toLowerCase().includes(inputValue.toLowerCase().trim()))
+    : history;
+
+  const showDropdown = focused && filteredHistory.length > 0;
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!history.length) return;
+      if (historyIndex === -1) savedInputRef.current = inputValue;
+      const next = Math.min(historyIndex + 1, history.length - 1);
+      setHistoryIndex(next);
+      onInputChange(history[next]);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!history.length) return;
+      if (historyIndex <= 0) {
+        setHistoryIndex(-1);
+        onInputChange(savedInputRef.current);
+      } else {
+        const next = historyIndex - 1;
+        setHistoryIndex(next);
+        onInputChange(history[next]);
+      }
+    } else if (e.key === "Escape") {
+      setHistoryIndex(-1);
+      inputRef.current?.blur();
+    }
+  }
+
   return (
     <div className="app__main" style={{ position: "relative" }}>
       <div
@@ -151,6 +198,8 @@ export default function SearchIdleView({
           onSubmit={onSubmit}
           style={{
             width: "100%",
+            position: "relative",
+            zIndex: 2,
             animation: "rowIn 0.5s var(--ease) 160ms both",
           }}
           onFocus={onFocus}
@@ -174,14 +223,18 @@ export default function SearchIdleView({
               type="text"
               disabled={isLocked}
               value={inputValue}
-              onChange={(e) => onInputChange(e.target.value)}
+              onChange={(e) => {
+                setHistoryIndex(-1);
+                onInputChange(e.target.value);
+              }}
+              onKeyDown={handleKeyDown}
               placeholder={isLocked ? "Limit reached" : "What do you want to watch?"}
               style={{
                 width: "100%",
                 padding: "18px 52px",
                 background: isLocked ? "var(--bg-elev)" : (focused ? "var(--bg-card)" : "var(--bg-elev)"),
                 border: `1px solid ${!isLocked && focused ? "var(--accent)" : "var(--border)"}`,
-                borderRadius: 14,
+                borderRadius: showDropdown ? "14px 14px 0 0" : 14,
                 color: isLocked ? "var(--text-mute)" : "var(--text)",
                 fontSize: 16,
                 fontFamily: "var(--font-sans)",
@@ -210,6 +263,51 @@ export default function SearchIdleView({
             >
               ⏎
             </span>
+            {showDropdown && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--accent)",
+                  borderTop: "1px solid var(--border)",
+                  borderRadius: "0 0 14px 14px",
+                  overflow: "hidden",
+                  zIndex: 100,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+                }}
+              >
+                {filteredHistory.map((item, i) => (
+                  <div
+                    key={item}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onInputChange(item);
+                      setHistoryIndex(-1);
+                    }}
+                    onMouseEnter={() => setHoverIndex(i)}
+                    onMouseLeave={() => setHoverIndex(-1)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "9px 16px",
+                      cursor: "pointer",
+                      background: i === hoverIndex ? "var(--bg-elev)" : "transparent",
+                      color: i === hoverIndex ? "var(--text)" : "var(--text-dim)",
+                      fontSize: 14,
+                      fontFamily: "var(--font-sans)",
+                      transition: "background 0.1s, color 0.1s",
+                    }}
+                  >
+                    <HistoryIcon />
+                    {item}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </form>
         <div
