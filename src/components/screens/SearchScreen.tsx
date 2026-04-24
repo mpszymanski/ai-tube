@@ -70,10 +70,19 @@ export default function SearchScreen({
     if (phase === "idle") setApiUsage(getUsage());
   }, [phase]);
 
-  const [subscribedChannels, setSubscribedChannels] = useState<ChannelResult[]>(() => getSubscriptions());
+  function sampleChannels(channels: ChannelResult[]): ChannelResult[] {
+    const copy = [...channels];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy.slice(0, 10);
+  }
+
+  const [subscribedChannels, setSubscribedChannels] = useState<ChannelResult[]>(() => sampleChannels(getSubscriptions()));
   useEffect(() => {
-    setSubscribedChannels(getSubscriptions());
-    return subscribeToChanges(() => setSubscribedChannels(getSubscriptions()));
+    setSubscribedChannels(sampleChannels(getSubscriptions()));
+    return subscribeToChanges(() => setSubscribedChannels(sampleChannels(getSubscriptions())));
   }, []);
 
   const inputRef = useRef<HTMLInputElement>(null);
