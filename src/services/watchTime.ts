@@ -79,7 +79,7 @@ export function getWeekSeconds(): number {
 export function formatTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
-  return `${h}h ${m}m`;
+  return `${h}:${String(m).padStart(2, "0")}`;
 }
 
 export function _reset(): void {

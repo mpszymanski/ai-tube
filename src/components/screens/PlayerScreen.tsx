@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { VideoResult } from "../../types";
 import { addSeconds } from "../../services/watchTime";
 import ScreenShell from "../layout/ScreenShell";
 import SubscribeButton from "../widgets/SubscribeButton";
 import { formatViewCount, formatPublishedAt } from "../../utils/formatters";
+import { ClipboardIcon, CheckIcon } from "../ui/Icons";
 
 declare global {
   interface Window {
@@ -71,6 +72,15 @@ export default function PlayerScreen({ video, onBack, onGoToChannel }: PlayerScr
     };
   }, [video.videoId]);
 
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(`https://www.youtube.com/watch?v=${video.videoId}`).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
   const metaParts = [formatViewCount(video.viewCount), formatPublishedAt(video.publishedAt)].filter(Boolean);
 
   return (
@@ -120,6 +130,40 @@ export default function PlayerScreen({ video, onBack, onGoToChannel }: PlayerScr
                   )}
                 </div>
               </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <button
+                    onClick={handleCopy}
+                    title="Copy video link"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      fontSize: 12,
+                      fontFamily: "var(--font-mono)",
+                      padding: "6px 14px",
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid var(--border-strong)",
+                      background: copied ? "var(--accent)" : "transparent",
+                      color: copied ? "#fff" : "var(--text-dim)",
+                      cursor: "pointer",
+                      transition: "border-color 0.15s, color 0.15s, background 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!copied) {
+                        e.currentTarget.style.borderColor = "var(--text-dim)";
+                        e.currentTarget.style.color = "var(--text)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!copied) {
+                        e.currentTarget.style.borderColor = "var(--border-strong)";
+                        e.currentTarget.style.color = "var(--text-dim)";
+                      }
+                    }}
+                  >
+                    {copied ? <CheckIcon size={13} /> : <ClipboardIcon size={13} />}
+                    {copied ? "Copied!" : "Copy link"}
+                  </button>
               {video.channelId && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                   {onGoToChannel && (
@@ -161,6 +205,7 @@ export default function PlayerScreen({ video, onBack, onGoToChannel }: PlayerScr
             </div>
           </div>
         </div>
+      </div>
     </ScreenShell>
   );
 }

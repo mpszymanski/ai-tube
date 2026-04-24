@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { VideoResult, ChannelResult, ChannelResultWithVideos } from "../../types";
+import { VideoResult, ChannelResult, ChannelResultWithVideos, TimePeriod } from "../../types";
 import { getConfig } from "../../services/config";
 import { analyzeQuery, classifyClickbait } from "../../services/lmStudio";
 import { searchYouTube, searchChannels, getChannelLatestVideos } from "../../services/youtube";
@@ -60,6 +60,7 @@ export default function SearchScreen({
   const [channelCandidates, setChannelCandidates] = useState<ChannelResult[]>([]);
   const [pendingVideoQuery, setPendingVideoQuery] = useState("");
   const [pendingIntent, setPendingIntent] = useState<"videos" | "channel" | "channel-videos">("videos");
+  const [pendingPublishedAfter, setPendingPublishedAfter] = useState<string | undefined>(undefined);
 
   const [apiUsage, setApiUsage] = useState(() => getUsage());
 
@@ -117,7 +118,19 @@ export default function SearchScreen({
     };
   }, []);
 
-  async function doChannelSearch(channel: ChannelResult, displayQuery: string) {
+  function timePeriodToPublishedAfter(period?: TimePeriod): string | undefined {
+    if (!period) return undefined;
+    const d = new Date();
+    switch (period) {
+      case "today":      d.setHours(0, 0, 0, 0); break;
+      case "this_week":  d.setDate(d.getDate() - d.getDay()); d.setHours(0, 0, 0, 0); break;
+      case "this_month": d.setDate(1); d.setHours(0, 0, 0, 0); break;
+      case "this_year":  d.setMonth(0, 1); d.setHours(0, 0, 0, 0); break;
+    }
+    return d.toISOString();
+  }
+
+  async function doChannelSearch(channel: ChannelResult, displayQuery: string, publishedAfter?: string) {
     const config = getConfig();
     const searchStart = Date.now();
 
@@ -126,6 +139,7 @@ export default function SearchScreen({
         channel.channelId,
         config.youtubeApiKey,
         channel.thumbnailUrl,
+        publishedAfter,
       );
       const titles = allResults.map((r) => r.title);
       const classified = await classifyClickbait(titles);
@@ -149,6 +163,7 @@ export default function SearchScreen({
     videoQuery: string,
     displayQuery: string,
     channelId?: string,
+    publishedAfter?: string,
   ) {
     const config = getConfig();
     const searchStart = Date.now();
@@ -159,6 +174,7 @@ export default function SearchScreen({
         videoQuery,
         config.youtubeApiKey,
         channelId,
+        publishedAfter,
       );
       const titles = allResults.map((r) => r.title);
       const classified = await classifyClickbait(titles);
@@ -218,18 +234,22 @@ export default function SearchScreen({
     let videoQuery = query;
     let intent: "videos" | "channel" | "channel-videos" = "videos";
     let channelName: string | undefined;
+    let timePeriod: TimePeriod | undefined;
     try {
       const result = await analyzeQuery(query);
       videoQuery = result.videoQuery;
       intent = result.intent;
       channelName = result.channelName;
+      timePeriod = result.timePeriod;
     } catch {
       // fallback to original query
     }
 
+    const publishedAfter = timePeriodToPublishedAfter(timePeriod);
     startTypewriter(videoQuery);
     setPendingVideoQuery(videoQuery);
     setPendingIntent(intent);
+    setPendingPublishedAfter(publishedAfter);
 
     let resolvedChannelId: string | undefined;
     let resolvedChannel: ChannelResult | undefined;
@@ -258,9 +278,9 @@ export default function SearchScreen({
 
     setRow4Visible(true);
     if (intent === "channel" && resolvedChannel) {
-      await doChannelSearch(resolvedChannel, query);
+      await doChannelSearch(resolvedChannel, query, publishedAfter);
     } else {
-      await doVideoSearch(videoQuery, query, resolvedChannelId);
+      await doVideoSearch(videoQuery, query, resolvedChannelId, publishedAfter);
     }
   }
 
@@ -268,12 +288,13 @@ export default function SearchScreen({
     setPhase("thinking");
     setRow4Visible(true);
     if (pendingIntent === "channel" && channel) {
-      await doChannelSearch(channel, originalQuery);
+      await doChannelSearch(channel, originalQuery, pendingPublishedAfter);
     } else {
       await doVideoSearch(
         pendingVideoQuery,
         originalQuery,
         channel?.channelId ?? undefined,
+        pendingPublishedAfter,
       );
     }
   }

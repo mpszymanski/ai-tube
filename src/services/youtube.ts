@@ -116,6 +116,7 @@ export async function getChannelLatestVideos(
   channelId: string,
   apiKey: string,
   channelThumbnailUrl?: string,
+  publishedAfter?: string,
 ): Promise<VideoResult[]> {
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.searchParams.set("part", "snippet");
@@ -123,6 +124,7 @@ export async function getChannelLatestVideos(
   url.searchParams.set("channelId", channelId);
   url.searchParams.set("order", "date");
   url.searchParams.set("maxResults", "10");
+  if (publishedAfter) url.searchParams.set("publishedAfter", publishedAfter);
   url.searchParams.set("key", apiKey);
 
   const res = await fetch(url.toString());
@@ -159,6 +161,7 @@ export async function searchYouTube(
   query: string,
   apiKey: string,
   channelId?: string,
+  publishedAfter?: string,
 ): Promise<VideoResult[]> {
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.searchParams.set("part", "snippet");
@@ -166,6 +169,7 @@ export async function searchYouTube(
   url.searchParams.set("type", "video");
   url.searchParams.set("maxResults", "10");
   if (channelId) url.searchParams.set("channelId", channelId);
+  if (publishedAfter) url.searchParams.set("publishedAfter", publishedAfter);
   url.searchParams.set("key", apiKey);
 
   const res = await fetch(url.toString());

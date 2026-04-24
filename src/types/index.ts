@@ -25,6 +25,8 @@ export type AppScreen = "setup" | "search" | "results" | "channel-results" | "pl
 
 export type SearchIntent = "videos" | "channel" | "channel-videos";
 
+export type TimePeriod = "today" | "this_week" | "this_month" | "this_year";
+
 export interface ChannelResult {
   channelId: string;
   title: string;

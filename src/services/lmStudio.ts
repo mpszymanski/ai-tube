@@ -1,5 +1,7 @@
+import { TimePeriod } from "../types";
+
 const SYSTEM_PROMPT_ANALYZE =
-  'You analyze YouTube search requests. Output a JSON object with:\n- "videoQuery": a short, precise search query (3-8 words). Remove filler words and vagueness. Use specific, factual keywords.\n- "intent": one of "videos", "channel", "channel-videos":\n  - "channel": user wants to browse or find a specific channel (e.g. "show me the Fireship channel", "find MrBeast channel", "open Linus channel")\n  - "channel-videos": user wants videos from a specific channel matching a topic (e.g. "Linus Tech Tips GPU reviews", "show me veritasium videos about physics")\n  - "videos": all other searches (no specific channel mentioned, or general topic search)\n- "channelName": (optional) only if the user explicitly mentions a specific YouTube channel or creator by name.\n\nRespond ONLY with valid JSON. No markdown, no explanation.\n\nExamples:\nUser: "show me the fireship channel"\n{"videoQuery":"Fireship","intent":"channel","channelName":"Fireship"}\n\nUser: "linus tech tips GPU reviews"\n{"videoQuery":"GPU review benchmark","intent":"channel-videos","channelName":"Linus Tech Tips"}\n\nUser: "find the MrBeast channel"\n{"videoQuery":"MrBeast","intent":"channel","channelName":"MrBeast"}\n\nUser: "veritasium videos about black holes"\n{"videoQuery":"black holes explainer","intent":"channel-videos","channelName":"Veritasium"}\n\nUser: "latest rust programming tutorials"\n{"videoQuery":"Rust programming tutorial","intent":"videos"}';
+  'You analyze YouTube search requests. Output a JSON object with:\n- "videoQuery": a short, precise search query (3-8 words). Remove filler words and vagueness. Use specific, factual keywords.\n- "intent": one of "videos", "channel", "channel-videos":\n  - "channel": user wants to browse or find a specific channel (e.g. "show me the Fireship channel", "find MrBeast channel", "open Linus channel")\n  - "channel-videos": user wants videos from a specific channel matching a topic (e.g. "Linus Tech Tips GPU reviews", "show me veritasium videos about physics")\n  - "videos": all other searches (no specific channel mentioned, or general topic search)\n- "channelName": (optional) only if the user explicitly mentions a specific YouTube channel or creator by name.\n- "timePeriod": (optional) one of "today", "this_week", "this_month", "this_year" — only set when the user explicitly mentions a time window. Examples: "today" → "today", "this week" / "past week" → "this_week", "this month" / "past month" → "this_month", "this year" / "past year" → "this_year". Leave absent if no time window is mentioned. Do NOT set it for vague words like "latest" or "recent" alone.\n\nRespond ONLY with valid JSON. No markdown, no explanation.\n\nExamples:\nUser: "show me the fireship channel"\n{"videoQuery":"Fireship","intent":"channel","channelName":"Fireship"}\n\nUser: "linus tech tips GPU reviews"\n{"videoQuery":"GPU review benchmark","intent":"channel-videos","channelName":"Linus Tech Tips"}\n\nUser: "find the MrBeast channel"\n{"videoQuery":"MrBeast","intent":"channel","channelName":"MrBeast"}\n\nUser: "veritasium videos about black holes"\n{"videoQuery":"black holes explainer","intent":"channel-videos","channelName":"Veritasium"}\n\nUser: "latest rust programming tutorials"\n{"videoQuery":"Rust programming tutorial","intent":"videos"}\n\nUser: "best programming tutorials this week"\n{"videoQuery":"programming tutorial","intent":"videos","timePeriod":"this_week"}\n\nUser: "python videos from today"\n{"videoQuery":"Python programming","intent":"videos","timePeriod":"today"}\n\nUser: "veritasium videos this month"\n{"videoQuery":"Veritasium","intent":"channel-videos","channelName":"Veritasium","timePeriod":"this_month"}\n\nUser: "top AI news this year"\n{"videoQuery":"AI news","intent":"videos","timePeriod":"this_year"}';
 
 const SYSTEM_PROMPT_GROUP_TOPICS =
   'You are a video content analyst. Group the given videos into distinct topics.\n' +
@@ -54,17 +56,19 @@ async function callLmStudio<T>(
 
 export async function analyzeQuery(
   userInput: string,
-): Promise<{ videoQuery: string; intent: "videos" | "channel" | "channel-videos"; channelName?: string }> {
+): Promise<{ videoQuery: string; intent: "videos" | "channel" | "channel-videos"; channelName?: string; timePeriod?: TimePeriod }> {
   const parsed = await callLmStudio(SYSTEM_PROMPT_ANALYZE, userInput, 2000, null);
   if (!parsed || typeof parsed !== "object") {
     return { videoQuery: userInput, intent: "videos" };
   }
   const p = parsed as Record<string, unknown>;
   const validIntents = ["videos", "channel", "channel-videos"];
+  const validTimePeriods: TimePeriod[] = ["today", "this_week", "this_month", "this_year"];
   return {
     videoQuery: typeof p.videoQuery === "string" && p.videoQuery ? p.videoQuery : userInput,
     intent: typeof p.intent === "string" && validIntents.includes(p.intent) ? (p.intent as "videos" | "channel" | "channel-videos") : "videos",
     channelName: typeof p.channelName === "string" && p.channelName ? p.channelName : undefined,
+    timePeriod: typeof p.timePeriod === "string" && validTimePeriods.includes(p.timePeriod as TimePeriod) ? (p.timePeriod as TimePeriod) : undefined,
   };
 }
 

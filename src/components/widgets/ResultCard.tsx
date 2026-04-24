@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { VideoResult } from "../../types";
 import { formatDuration, formatViewCount, formatPublishedAt } from "../../utils/formatters";
+import { ClipboardIcon, CheckIcon } from "../ui/Icons";
 
 interface ResultCardProps {
   video: VideoResult;
@@ -14,8 +16,24 @@ export default function ResultCard({ video, onClick, animationDelay, disabled, i
   const views = formatViewCount(video.viewCount);
   const posted = formatPublishedAt(video.publishedAt);
   const showSeenStyle = !!isSeen && !disabled;
+  const [hovered, setHovered] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation();
+    const url = `https://www.youtube.com/watch?v=${video.videoId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
 
   return (
+    <div
+      style={{ position: "relative" }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
     <button
       onClick={disabled ? undefined : onClick}
       style={{
@@ -127,5 +145,32 @@ export default function ResultCard({ video, onClick, animationDelay, disabled, i
         </div>
       </div>
     </button>
+    <button
+      onClick={handleCopy}
+      title="Copy video link"
+      style={{
+        position: "absolute",
+        bottom: 10,
+        right: 10,
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "4px 8px",
+        background: copied ? "var(--accent)" : "var(--bg-elev)",
+        border: "1px solid var(--border-strong)",
+        borderRadius: "var(--radius-sm)",
+        color: copied ? "#fff" : "var(--text-dim)",
+        fontSize: 11,
+        fontFamily: "var(--font-sans)",
+        cursor: "pointer",
+        opacity: hovered || copied ? 1 : 0,
+        transition: "opacity 0.15s, background 0.15s, color 0.15s",
+        pointerEvents: hovered || copied ? "auto" : "none",
+      }}
+    >
+      {copied ? <CheckIcon size={13} /> : <ClipboardIcon size={13} />}
+      {copied ? "Copied!" : "Copy link"}
+    </button>
+    </div>
   );
 }
