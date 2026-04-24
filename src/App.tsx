@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { AppScreen, VideoResult, ChannelResult, ChannelResultWithVideos } from "./types";
 import { hydrate as hydrateConfig, isConfigured, getConfig } from "./services/config";
-import { hydrate as hydrateWatchTime, getTodaySeconds, getWeekSeconds } from "./services/watchTime";
+import { hydrate as hydrateWatchTime, getTodaySeconds, getWeekSeconds, isCacheReady } from "./services/watchTime";
 import { hydrate as hydrateSubscriptions } from "./services/subscriptions";
 import { hydrate as hydrateApiUsage } from "./services/apiUsage";
 import { hydrateSeenVideos, persistSeenVideos } from "./services/seenVideos";
@@ -73,7 +73,8 @@ export default function App() {
   }, [ready]);
 
   useEffect(() => {
-    const id = setInterval(() => {
+    const id = setInterval(async () => {
+      if (!isCacheReady()) await hydrateWatchTime();
       setTodaySeconds(getTodaySeconds());
       setWeekSeconds(getWeekSeconds());
     }, 1000);

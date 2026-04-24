@@ -48,7 +48,17 @@ export function getWatchTimeData(): WatchTimeData {
   return cache ? pruneOldDays(cache) : { daily: {} };
 }
 
+export function isCacheReady(): boolean {
+  return cache !== null;
+}
+
 export function addSeconds(seconds: number): void {
+  if (!cache) {
+    // Cache was cleared (e.g. by HMR) — re-hydrate then retry so we don't
+    // overwrite persisted data with a fresh empty cache.
+    hydrate().then(() => addSeconds(seconds)).catch(() => {});
+    return;
+  }
   const data = getWatchTimeData();
   const today = todayKey();
   data.daily[today] = (data.daily[today] ?? 0) + seconds;
