@@ -1,18 +1,32 @@
-const KEY = "aitube_search_history";
+import type { StorageAdapter } from "./storage/adapter";
+import { KEYS } from "./storage/adapter";
+import { getAdapter } from "./storage";
+
 const MAX = 15;
 
-export function getHistory(): string[] {
+let cache: string[] | null = null;
+
+export async function hydrate(adapter?: StorageAdapter): Promise<void> {
+  const a = adapter ?? getAdapter();
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    const raw = await a.get(KEYS.SEARCH_HISTORY);
+    cache = raw ? JSON.parse(raw) : [];
   } catch {
-    return [];
+    cache = [];
   }
+}
+
+export function getHistory(): string[] {
+  return cache ?? [];
 }
 
 export function addToHistory(query: string): void {
   const trimmed = query.trim();
   if (!trimmed) return;
-  const history = getHistory().filter((q) => q !== trimmed);
-  history.unshift(trimmed);
-  localStorage.setItem(KEY, JSON.stringify(history.slice(0, MAX)));
+  const next = (cache ?? []).filter((q) => q !== trimmed);
+  next.unshift(trimmed);
+  cache = next.slice(0, MAX);
+  getAdapter()
+    .set(KEYS.SEARCH_HISTORY, JSON.stringify(cache))
+    .catch(() => console.warn("aitube: search history not saved"));
 }

@@ -1,12 +1,10 @@
-import { useState, useEffect } from "react";
-import { AppScreen, VideoResult, ChannelResult, ChannelResultWithVideos } from "./types";
-import { hydrate as hydrateConfig, isConfigured, getConfig } from "./services/config";
-import { hydrate as hydrateWatchTime, getTodaySeconds, getWeekSeconds, isCacheReady } from "./services/watchTime";
-import { hydrate as hydrateSubscriptions } from "./services/subscriptions";
-import { hydrate as hydrateApiUsage } from "./services/apiUsage";
+import { useState, useEffect, useMemo } from "react";
+import { AppScreen, VideoResult, ChannelResult, ChannelResultWithVideos, MODEL_STATUS, ModelStatus } from "./types";
+import { isConfigured, getConfig } from "./services/config";
+import { getTodaySeconds, getWeekSeconds, isCacheReady, hydrate as hydrateWatchTime } from "./services/watchTime";
 import { hydrateSeenVideos, persistSeenVideos } from "./services/seenVideos";
-import { getChannelLatestVideos } from "./services/youtube";
-import { classifyClickbait } from "./services/lmStudio";
+import { runChannelSearch } from "./services/searchService";
+import { bootstrapStorage } from "./services";
 import { ensureModelServer } from "./services/modelServer";
 import { checkModelExists, downloadModel, type DownloadProgress } from "./services/modelDownloader";
 import { invoke } from "@tauri-apps/api/core";
@@ -18,29 +16,20 @@ import PlayerScreen from "./components/screens/PlayerScreen";
 import ChannelResultsScreen from "./components/screens/ChannelResultsScreen";
 import SubscriptionsScreen from "./components/screens/SubscriptionsScreen";
 
-async function bootstrapStorage(): Promise<void> {
-  await Promise.all([
-    hydrateConfig(),
-    hydrateWatchTime(),
-    hydrateSubscriptions(),
-    hydrateApiUsage(),
-  ]);
-}
-
 export default function App() {
   const [ready, setReady] = useState(false);
-  const [modelStatus, setModelStatus] = useState<"checking" | "downloading" | "starting" | "ready" | "error">("checking");
+  const [modelStatus, setModelStatus] = useState<ModelStatus>(MODEL_STATUS.CHECKING);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
   async function runModelPipeline(forceDownload: boolean) {
     const exists = await checkModelExists();
     if (!exists || forceDownload) {
-      setModelStatus("downloading");
+      setModelStatus(MODEL_STATUS.DOWNLOADING);
       await downloadModel(setDownloadProgress);
     }
-    setModelStatus("starting");
+    setModelStatus(MODEL_STATUS.STARTING);
     await ensureModelServer();
-    setModelStatus("ready");
+    setModelStatus(MODEL_STATUS.READY);
   }
 
   async function retryModelDownload() {
@@ -50,7 +39,7 @@ export default function App() {
       await runModelPipeline(true);
     } catch (e) {
       console.error("[retry] model pipeline failed:", e);
-      setModelStatus("error");
+      setModelStatus(MODEL_STATUS.ERROR);
     }
   }
 
@@ -64,12 +53,13 @@ export default function App() {
         await runModelPipeline(false);
       } catch (e) {
         console.error("[boot] model pipeline failed:", e);
-        setModelStatus("error");
+        setModelStatus(MODEL_STATUS.ERROR);
       }
     })();
   }, []);
 
   const [screen, setScreen] = useState<AppScreen>("search");
+  const [previousScreen, setPreviousScreen] = useState<AppScreen>("results");
   const [results, setResults] = useState<VideoResult[]>([]);
   const [channelData, setChannelData] = useState<ChannelResultWithVideos | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoResult | null>(null);
@@ -114,6 +104,7 @@ export default function App() {
         : results;
     const video = allVideos.find((r) => r.videoId === videoId) ?? null;
     setSelectedVideo(video);
+    setPreviousScreen(screen);
     setScreen("player");
     setSeenVideoIds((prev) => {
       const next = new Set(prev);
@@ -131,22 +122,14 @@ export default function App() {
   }
 
   function handleBackFromPlayer() {
-    if (channelData) {
-      setScreen("channel-results");
-    } else {
-      setScreen("results");
-    }
+    setScreen(previousScreen);
   }
 
   async function handleChannelSelectFromSubscriptions(channel: ChannelResult) {
     const config = getConfig();
     try {
-      const allResults = await getChannelLatestVideos(channel.channelId, config.youtubeApiKey, channel.thumbnailUrl);
-      const titles = allResults.map((r) => r.title);
-      const classified = await classifyClickbait(titles);
-      const clickbaitMap = new Map(classified.map((item) => [item.title, item.clickbait]));
-      const latestVideos = allResults.map((r) => ({ ...r, isClickbait: clickbaitMap.get(r.title) ?? false }));
-      setChannelData({ channel, latestVideos });
+      const result = await runChannelSearch({ channel, apiKey: config.youtubeApiKey });
+      setChannelData(result);
       setQuery(channel.title);
       setScreen("channel-results");
     } catch {
@@ -161,9 +144,9 @@ export default function App() {
     return <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }} />;
   }
 
-  const modelBanner = modelStatus !== "ready" && (
-    <div style={{ position: "fixed", bottom: 12, right: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 14px", fontSize: 12, color: modelStatus === "error" ? "var(--text-warn, #f59e0b)" : "var(--text-dim)", zIndex: 9999, minWidth: 220 }}>
-      {modelStatus === "error" && (
+  const modelBanner = modelStatus !== MODEL_STATUS.READY && (
+    <div style={{ position: "fixed", bottom: 12, right: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 14px", fontSize: 12, color: modelStatus === MODEL_STATUS.ERROR ? "var(--text-warn, #f59e0b)" : "var(--text-dim)", zIndex: 9999, minWidth: 220 }}>
+      {modelStatus === MODEL_STATUS.ERROR && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span>AI model failed to start</span>
           <button
@@ -174,9 +157,9 @@ export default function App() {
           </button>
         </div>
       )}
-      {modelStatus === "checking" && "Checking AI model…"}
-      {modelStatus === "starting" && "Starting AI model…"}
-      {modelStatus === "downloading" && (
+      {modelStatus === MODEL_STATUS.CHECKING && "Checking AI model…"}
+      {modelStatus === MODEL_STATUS.STARTING && "Starting AI model…"}
+      {modelStatus === MODEL_STATUS.DOWNLOADING && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span>Downloading AI model…</span>
           {downloadProgress && (
@@ -194,7 +177,10 @@ export default function App() {
     </div>
   );
 
-  const shellValue = { todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSettings: () => setScreen("setup") };
+  const shellValue = useMemo(
+    () => ({ todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSettings: () => setScreen("setup") }),
+    [todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked],
+  );
 
   if (screen === "setup") {
     const wasConfigured = isConfigured();

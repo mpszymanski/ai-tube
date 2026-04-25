@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { VideoResult, ChannelResult, ChannelResultWithVideos, TimePeriod } from "../../types";
 import { getConfig } from "../../services/config";
-import { analyzeQuery, classifyClickbait } from "../../services/lmStudio";
-import { searchYouTube, searchChannels, getChannelLatestVideos } from "../../services/youtube";
+import { analyzeQuery } from "../../services/lmStudio";
+import { searchChannels } from "../../services/youtube";
+import { runVideoSearch, runChannelSearch } from "../../services/searchService";
 import { getSubscriptions, subscribeToChanges } from "../../services/subscriptions";
 import { getHistory, addToHistory } from "../../services/searchHistory";
+import { recordUnits } from "../../services/apiUsage";
+import { timePeriodToPublishedAfter } from "../../utils/dates";
 import WatchTimeCounter from "../widgets/WatchTimeCounter";
 import SettingsButton from "../ui/SettingsButton";
 import { getUsage } from "../../services/apiUsage";
@@ -129,39 +132,12 @@ export default function SearchScreen({
     };
   }, []);
 
-  function timePeriodToPublishedAfter(period?: TimePeriod): string | undefined {
-    if (!period) return undefined;
-    const d = new Date();
-    switch (period) {
-      case "today":      d.setHours(0, 0, 0, 0); break;
-      case "this_week":  d.setDate(d.getDate() - d.getDay()); d.setHours(0, 0, 0, 0); break;
-      case "this_month": d.setDate(1); d.setHours(0, 0, 0, 0); break;
-      case "this_year":  d.setMonth(0, 1); d.setHours(0, 0, 0, 0); break;
-    }
-    return d.toISOString();
-  }
-
   async function doChannelSearch(channel: ChannelResult, displayQuery: string, publishedAfter?: string) {
     const config = getConfig();
     const searchStart = Date.now();
-
     try {
-      const allResults = await getChannelLatestVideos(
-        channel.channelId,
-        config.youtubeApiKey,
-        channel.thumbnailUrl,
-        publishedAfter,
-      );
-      const titles = allResults.map((r) => r.title);
-      const classified = await classifyClickbait(titles);
-      const clickbaitMap = new Map(
-        classified.map((item) => [item.title, item.clickbait]),
-      );
-      const latestVideos = allResults
-        .map((r) => ({ ...r, isClickbait: clickbaitMap.get(r.title) ?? false }))
-        .slice(0, 10);
-
-      afterMinDelay(searchStart, () => onChannelSearch({ channel, latestVideos }, displayQuery));
+      const result = await runChannelSearch({ channel, publishedAfter, apiKey: config.youtubeApiKey });
+      afterMinDelay(searchStart, () => onChannelSearch(result, displayQuery));
     } catch {
       afterMinDelay(searchStart, () => {
         setPhase("idle");
@@ -178,29 +154,8 @@ export default function SearchScreen({
   ) {
     const config = getConfig();
     const searchStart = Date.now();
-    let results: VideoResult[] = [];
-
     try {
-      const allResults = await searchYouTube(
-        videoQuery,
-        config.youtubeApiKey,
-        channelId,
-        publishedAfter,
-      );
-      const titles = allResults.map((r) => r.title);
-      const classified = await classifyClickbait(titles);
-      const clickbaitMap = new Map(
-        classified.map((item) => [item.title, item.clickbait]),
-      );
-      results = allResults
-        .map((r) => ({ ...r, isClickbait: clickbaitMap.get(r.title) ?? false }))
-        .sort(
-          (a, b) =>
-            new Date(b.publishedAt).getTime() -
-            new Date(a.publishedAt).getTime(),
-        )
-        .slice(0, 10);
-
+      const results = await runVideoSearch({ query: videoQuery, channelId, publishedAfter, apiKey: config.youtubeApiKey });
       if (results.length === 0) {
         afterMinDelay(searchStart, () => {
           setPhase("idle");
@@ -208,6 +163,7 @@ export default function SearchScreen({
         });
         return;
       }
+      afterMinDelay(searchStart, () => onSearch(results, displayQuery));
     } catch (err: any) {
       const msg = err?.message ?? "";
       afterMinDelay(searchStart, () => {
@@ -218,10 +174,7 @@ export default function SearchScreen({
           setError("YouTube search failed. Check your API key.");
         }
       });
-      return;
     }
-
-    afterMinDelay(searchStart, () => onSearch(results, displayQuery));
   }
 
   async function handleChannelClick(channel: ChannelResult) {
@@ -272,7 +225,7 @@ export default function SearchScreen({
       setRow3Visible(true);
 
       try {
-        const channels = await searchChannels(channelName, config.youtubeApiKey);
+        const channels = await searchChannels(channelName, config.youtubeApiKey, recordUnits);
         if (channels.length === 1) {
           resolvedChannelId = channels[0].channelId;
           resolvedChannel = channels[0];

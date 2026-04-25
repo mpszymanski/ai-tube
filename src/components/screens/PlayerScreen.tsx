@@ -1,17 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { VideoResult } from "../../types";
 import { addSeconds } from "../../services/watchTime";
+import { useYouTubePlayer } from "../../hooks/useYouTubePlayer";
+import { useCopyLink } from "../../hooks/useCopyLink";
 import ScreenShell from "../layout/ScreenShell";
 import SubscribeButton from "../widgets/SubscribeButton";
 import { formatViewCount, formatPublishedAt } from "../../utils/formatters";
 import { ClipboardIcon, CheckIcon } from "../ui/Icons";
-
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: () => void;
-  }
-}
 
 interface PlayerScreenProps {
   video: VideoResult;
@@ -20,8 +15,6 @@ interface PlayerScreenProps {
 }
 
 export default function PlayerScreen({ video, onBack, onGoToChannel }: PlayerScreenProps) {
-  const playerDivRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<any>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function clearWatchInterval() {
@@ -31,55 +24,15 @@ export default function PlayerScreen({ video, onBack, onGoToChannel }: PlayerScr
     }
   }
 
-  function initPlayer() {
-    if (!playerDivRef.current) return;
-    playerRef.current = new window.YT.Player(playerDivRef.current, {
-      videoId: video.videoId,
-      playerVars: { autoplay: 1, enablejsapi: 1 },
-      events: {
-        onStateChange: (event: any) => {
-          const state = event.data;
-          if (state === window.YT.PlayerState.PLAYING) {
-            clearWatchInterval();
-            intervalRef.current = setInterval(() => addSeconds(1), 1000);
-          } else {
-            clearWatchInterval();
-          }
-        },
-      },
-    });
-  }
-
-  useEffect(() => {
-    if (window.YT && window.YT.Player) {
-      initPlayer();
-    } else {
-      window.onYouTubeIframeAPIReady = initPlayer;
-      if (!document.getElementById("yt-iframe-api")) {
-        const script = document.createElement("script");
-        script.id = "yt-iframe-api";
-        script.src = "https://www.youtube.com/iframe_api";
-        document.body.appendChild(script);
-      }
-    }
-
-    return () => {
+  const playerDivRef = useYouTubePlayer(video.videoId, {
+    onPlaying: () => {
       clearWatchInterval();
-      if (playerRef.current?.destroy) {
-        try { playerRef.current.destroy(); } catch { /* ignore */ }
-      }
-      playerRef.current = null;
-    };
-  }, [video.videoId]);
+      intervalRef.current = setInterval(() => addSeconds(1), 1000);
+    },
+    onPaused: () => clearWatchInterval(),
+  });
 
-  const [copied, setCopied] = useState(false);
-
-  function handleCopy() {
-    navigator.clipboard.writeText(`https://www.youtube.com/watch?v=${video.videoId}`).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }
+  const { copied, handleCopy } = useCopyLink(video.videoId);
 
   const metaParts = [formatViewCount(video.viewCount), formatPublishedAt(video.publishedAt)].filter(Boolean);
 

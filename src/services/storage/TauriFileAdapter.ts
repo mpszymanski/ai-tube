@@ -22,13 +22,9 @@ export class TauriFileAdapter implements StorageAdapter {
   async get(key: string): Promise<string | null> {
     await this.dirReady;
     const path = keyToPath(key);
-    try {
-      const fileExists = await exists(path, { baseDir: BaseDirectory.AppData });
-      if (!fileExists) return null;
-      return await readTextFile(path, { baseDir: BaseDirectory.AppData });
-    } catch {
-      return null;
-    }
+    const fileExists = await exists(path, { baseDir: BaseDirectory.AppData });
+    if (!fileExists) return null;
+    return await readTextFile(path, { baseDir: BaseDirectory.AppData });
   }
 
   async set(key: string, value: string): Promise<void> {

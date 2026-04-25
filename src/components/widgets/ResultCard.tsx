@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { VideoResult } from "../../types";
 import { formatDuration, formatViewCount, formatPublishedAt } from "../../utils/formatters";
+import { useCopyLink } from "../../hooks/useCopyLink";
 import { ClipboardIcon, CheckIcon } from "../ui/Icons";
 
 interface ResultCardProps {
@@ -17,16 +18,7 @@ export default function ResultCard({ video, onClick, animationDelay, disabled, i
   const posted = formatPublishedAt(video.publishedAt);
   const showSeenStyle = !!isSeen && !disabled;
   const [hovered, setHovered] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  function handleCopy(e: React.MouseEvent) {
-    e.stopPropagation();
-    const url = `https://www.youtube.com/watch?v=${video.videoId}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }
+  const { copied, handleCopy } = useCopyLink(video.videoId);
 
   return (
     <div

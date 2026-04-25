@@ -39,3 +39,13 @@ export interface ChannelResultWithVideos {
   latestVideos: VideoResult[];
 }
 
+export const MODEL_STATUS = {
+  CHECKING: "checking",
+  DOWNLOADING: "downloading",
+  STARTING: "starting",
+  READY: "ready",
+  ERROR: "error",
+} as const;
+
+export type ModelStatus = (typeof MODEL_STATUS)[keyof typeof MODEL_STATUS];
+

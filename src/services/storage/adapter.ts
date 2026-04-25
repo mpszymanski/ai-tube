@@ -9,4 +9,5 @@ export const KEYS = {
   SUBSCRIPTIONS: "aitube_subscriptions",
   API_QUOTA: "aitube_api_quota",
   SEEN_VIDEOS: "aitube_seen_videos",
+  SEARCH_HISTORY: "aitube_search_history",
 } as const;
