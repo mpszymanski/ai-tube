@@ -32,6 +32,28 @@ export default function App() {
   const [modelStatus, setModelStatus] = useState<"checking" | "downloading" | "starting" | "ready" | "error">("checking");
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
+  async function runModelPipeline(forceDownload: boolean) {
+    const exists = await checkModelExists();
+    if (!exists || forceDownload) {
+      setModelStatus("downloading");
+      await downloadModel(setDownloadProgress);
+    }
+    setModelStatus("starting");
+    await ensureModelServer();
+    setModelStatus("ready");
+  }
+
+  async function retryModelDownload() {
+    try { await invoke("stop_model_server"); } catch {}
+    setDownloadProgress(null);
+    try {
+      await runModelPipeline(true);
+    } catch (e) {
+      console.error("[retry] model pipeline failed:", e);
+      setModelStatus("error");
+    }
+  }
+
   useEffect(() => {
     bootstrapStorage().then(() => setReady(true));
 
@@ -39,15 +61,7 @@ export default function App() {
       try {
         const info = await invoke("get_debug_info");
         console.log("[boot] debug info:", info);
-        const exists = await checkModelExists();
-        console.log("[boot] model exists:", exists);
-        if (!exists) {
-          setModelStatus("downloading");
-          await downloadModel(setDownloadProgress);
-        }
-        setModelStatus("starting");
-        await ensureModelServer();
-        setModelStatus("ready");
+        await runModelPipeline(false);
       } catch (e) {
         console.error("[boot] model pipeline failed:", e);
         setModelStatus("error");
@@ -149,7 +163,17 @@ export default function App() {
 
   const modelBanner = modelStatus !== "ready" && (
     <div style={{ position: "fixed", bottom: 12, right: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 14px", fontSize: 12, color: modelStatus === "error" ? "var(--text-warn, #f59e0b)" : "var(--text-dim)", zIndex: 9999, minWidth: 220 }}>
-      {modelStatus === "error" && "AI model failed to start"}
+      {modelStatus === "error" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span>AI model failed to start</span>
+          <button
+            onClick={retryModelDownload}
+            style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer", alignSelf: "flex-start" }}
+          >
+            Re-download model
+          </button>
+        </div>
+      )}
       {modelStatus === "checking" && "Checking AI model…"}
       {modelStatus === "starting" && "Starting AI model…"}
       {modelStatus === "downloading" && (
