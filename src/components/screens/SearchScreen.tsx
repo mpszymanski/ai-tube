@@ -76,7 +76,7 @@ export default function SearchScreen({
       const j = Math.floor(Math.random() * (i + 1));
       [copy[i], copy[j]] = [copy[j], copy[i]];
     }
-    return copy.slice(0, 10);
+    return copy.slice(0, 8).sort((a, b) => a.title.localeCompare(b.title));
   }
 
   const [subscribedChannels, setSubscribedChannels] = useState<ChannelResult[]>(() => sampleChannels(getSubscriptions()));
