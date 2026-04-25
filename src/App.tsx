@@ -140,6 +140,11 @@ export default function App() {
   const { dailyLimitSeconds, weeklyLimitSeconds } = getConfig();
   const isLocked = todaySeconds >= dailyLimitSeconds || weekSeconds >= weeklyLimitSeconds;
 
+  const shellValue = useMemo(
+    () => ({ todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSettings: () => setScreen("setup") }),
+    [todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked],
+  );
+
   if (!ready) {
     return <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }} />;
   }
@@ -175,11 +180,6 @@ export default function App() {
         </div>
       )}
     </div>
-  );
-
-  const shellValue = useMemo(
-    () => ({ todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSettings: () => setScreen("setup") }),
-    [todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked],
   );
 
   if (screen === "setup") {
