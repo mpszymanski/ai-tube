@@ -82,6 +82,34 @@ async function fetchChannelThumbnails(
   return map;
 }
 
+async function searchVideoPage(
+  params: Record<string, string>,
+  apiKey: string,
+  onQuotaUsed?: (units: number) => void,
+): Promise<any[]> {
+  const url = new URL("https://www.googleapis.com/youtube/v3/search");
+  url.searchParams.set("part", "snippet");
+  url.searchParams.set("type", "video");
+  url.searchParams.set("key", apiKey);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`YouTube API error: ${res.status} ${res.statusText}`);
+  onQuotaUsed?.(100);
+
+  return (await res.json()).items ?? [];
+}
+
+function mergeDedup(a: any[], b: any[]): any[] {
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const item of [...a, ...b]) {
+    const id = item.id?.videoId;
+    if (id && !seen.has(id)) { seen.add(id); out.push(item); }
+  }
+  return out;
+}
+
 export async function searchChannels(
   name: string,
   apiKey: string,
@@ -121,25 +149,19 @@ export async function getChannelLatestVideos(
   publishedAfter?: string,
   onQuotaUsed?: (units: number) => void,
 ): Promise<VideoResult[]> {
-  const url = new URL("https://www.googleapis.com/youtube/v3/search");
-  url.searchParams.set("part", "snippet");
-  url.searchParams.set("type", "video");
-  url.searchParams.set("channelId", channelId);
-  url.searchParams.set("order", "date");
-  url.searchParams.set("maxResults", "10");
-  if (publishedAfter) url.searchParams.set("publishedAfter", publishedAfter);
-  url.searchParams.set("key", apiKey);
+  const base: Record<string, string> = {
+    channelId,
+    order: "date",
+    ...(publishedAfter ? { publishedAfter } : {}),
+  };
 
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    throw new Error(`YouTube API error: ${res.status} ${res.statusText}`);
-  }
-  onQuotaUsed?.(100);
+  const [mediumItems, longItems] = await Promise.all([
+    searchVideoPage({ ...base, videoDuration: "medium", maxResults: "8" }, apiKey, onQuotaUsed),
+    searchVideoPage({ ...base, videoDuration: "long", maxResults: "2" }, apiKey, onQuotaUsed),
+  ]);
 
-  const data = await res.json();
-  const items: any[] = data.items ?? [];
+  const items = mergeDedup(mediumItems, longItems);
   const videoIds = items.map((item) => item.id.videoId).filter(Boolean);
-
   const details =
     videoIds.length > 0 ? await fetchVideoDetails(videoIds, apiKey, onQuotaUsed) : new Map();
 
@@ -167,25 +189,19 @@ export async function searchYouTube(
   publishedAfter?: string,
   onQuotaUsed?: (units: number) => void,
 ): Promise<VideoResult[]> {
-  const url = new URL("https://www.googleapis.com/youtube/v3/search");
-  url.searchParams.set("part", "snippet");
-  url.searchParams.set("q", query);
-  url.searchParams.set("type", "video");
-  url.searchParams.set("maxResults", "10");
-  if (channelId) url.searchParams.set("channelId", channelId);
-  if (publishedAfter) url.searchParams.set("publishedAfter", publishedAfter);
-  url.searchParams.set("key", apiKey);
+  const base: Record<string, string> = {
+    q: query,
+    ...(channelId ? { channelId } : {}),
+    ...(publishedAfter ? { publishedAfter } : {}),
+  };
 
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    throw new Error(`YouTube API error: ${res.status} ${res.statusText}`);
-  }
-  onQuotaUsed?.(100);
+  const [mediumItems, longItems] = await Promise.all([
+    searchVideoPage({ ...base, videoDuration: "medium", maxResults: "8" }, apiKey, onQuotaUsed),
+    searchVideoPage({ ...base, videoDuration: "long", maxResults: "2" }, apiKey, onQuotaUsed),
+  ]);
 
-  const data = await res.json();
-  const items: any[] = data.items ?? [];
+  const items = mergeDedup(mediumItems, longItems);
   const videoIds = items.map((item) => item.id.videoId).filter(Boolean);
-
   const details =
     videoIds.length > 0 ? await fetchVideoDetails(videoIds, apiKey, onQuotaUsed) : new Map();
 
