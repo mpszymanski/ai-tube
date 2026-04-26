@@ -165,21 +165,23 @@ export async function getChannelLatestVideos(
   const details =
     videoIds.length > 0 ? await fetchVideoDetails(videoIds, apiKey, onQuotaUsed) : new Map();
 
-  return items.map((item: any): VideoResult => {
-    const id = item.id.videoId;
-    const d = details.get(id);
-    return {
-      videoId: id,
-      title: decodeHtmlEntities(item.snippet.title),
-      thumbnailUrl: item.snippet.thumbnails.medium.url,
-      channelTitle: d?.channelTitle ?? item.snippet.channelTitle ?? "",
-      channelId,
-      channelThumbnailUrl: channelThumbnailUrl ?? "",
-      publishedAt: d?.publishedAt ?? item.snippet.publishedAt ?? "",
-      duration: d?.duration ?? "",
-      viewCount: d?.viewCount ?? "",
-    };
-  });
+  return items
+    .map((item: any): VideoResult => {
+      const id = item.id.videoId;
+      const d = details.get(id);
+      return {
+        videoId: id,
+        title: decodeHtmlEntities(item.snippet.title),
+        thumbnailUrl: item.snippet.thumbnails.medium.url,
+        channelTitle: d?.channelTitle ?? item.snippet.channelTitle ?? "",
+        channelId,
+        channelThumbnailUrl: channelThumbnailUrl ?? "",
+        publishedAt: d?.publishedAt ?? item.snippet.publishedAt ?? "",
+        duration: d?.duration ?? "",
+        viewCount: d?.viewCount ?? "",
+      };
+    })
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 }
 
 export async function searchYouTube(
@@ -214,22 +216,24 @@ export async function searchYouTube(
   ];
   const channelThumbs = await fetchChannelThumbnails(uniqueChannelIds, apiKey, onQuotaUsed);
 
-  return items.map((item: any): VideoResult => {
-    const id = item.id.videoId;
-    const d = details.get(id);
-    const itemChannelId: string = item.snippet?.channelId ?? "";
-    return {
-      videoId: id,
-      title: decodeHtmlEntities(item.snippet.title),
-      thumbnailUrl: item.snippet.thumbnails.medium.url,
-      channelTitle: d?.channelTitle ?? item.snippet.channelTitle ?? "",
-      channelId: itemChannelId || undefined,
-      channelThumbnailUrl: itemChannelId
-        ? (channelThumbs.get(itemChannelId) ?? "")
-        : "",
-      publishedAt: d?.publishedAt ?? item.snippet.publishedAt ?? "",
-      duration: d?.duration ?? "",
-      viewCount: d?.viewCount ?? "",
-    };
-  });
+  return items
+    .map((item: any): VideoResult => {
+      const id = item.id.videoId;
+      const d = details.get(id);
+      const itemChannelId: string = item.snippet?.channelId ?? "";
+      return {
+        videoId: id,
+        title: decodeHtmlEntities(item.snippet.title),
+        thumbnailUrl: item.snippet.thumbnails.medium.url,
+        channelTitle: d?.channelTitle ?? item.snippet.channelTitle ?? "",
+        channelId: itemChannelId || undefined,
+        channelThumbnailUrl: itemChannelId
+          ? (channelThumbs.get(itemChannelId) ?? "")
+          : "",
+        publishedAt: d?.publishedAt ?? item.snippet.publishedAt ?? "",
+        duration: d?.duration ?? "",
+        viewCount: d?.viewCount ?? "",
+      };
+    })
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 }
