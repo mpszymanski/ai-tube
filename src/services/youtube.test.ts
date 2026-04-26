@@ -66,7 +66,7 @@ describe("searchYouTube", () => {
     await searchYouTube("cats", "KEY");
 
     const searchCalls = fetcher.mock.calls
-      .map(([url]: [string]) => url)
+      .map((args) => args[0] as string)
       .filter((url: string) => url.includes("/search"));
 
     expect(searchCalls.length).toBe(2);
@@ -208,7 +208,7 @@ describe("getChannelLatestVideos", () => {
     await getChannelLatestVideos("ch1", "KEY");
 
     const searchCalls = fetcher.mock.calls
-      .map(([url]: [string]) => url)
+      .map((args) => args[0] as string)
       .filter((url: string) => url.includes("/search"));
 
     expect(searchCalls.length).toBe(2);
@@ -250,7 +250,7 @@ describe("getChannelLatestVideos", () => {
   });
 
   it("passes publishedAfter when provided", async () => {
-    const fetcher = vi.fn(() =>
+    const fetcher = vi.fn((_url: string) =>
       Promise.resolve({ ok: true, json: () => Promise.resolve({ items: [] }) }),
     );
     vi.stubGlobal("fetch", fetcher);
@@ -258,7 +258,7 @@ describe("getChannelLatestVideos", () => {
     await getChannelLatestVideos("ch1", "KEY", undefined, "2026-01-01T00:00:00Z");
 
     const searchCalls = fetcher.mock.calls
-      .map(([url]: [string]) => url)
+      .map((args) => args[0] as string)
       .filter((url: string) => url.includes("/search"));
 
     expect(searchCalls.every((u: string) => u.includes("publishedAfter="))).toBe(true);

@@ -10,7 +10,8 @@
       "Bash(npx tsc *)",
       "Bash(where cargo *)",
       "Bash(npm test *)",
-      "Bash(npx tauri *)"
+      "Bash(npx tauri *)",
+      "Bash(npx vitest *)"
     ]
   }
 }
