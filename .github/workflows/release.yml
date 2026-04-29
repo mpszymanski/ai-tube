@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Fetch llama-server binary and DLLs
+        shell: pwsh
+        run: ./scripts/fetch-llama-binaries.ps1
+
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'AI Tube ${{ github.ref_name }}'
+          releaseBody: |
+            ## Installation
+
+            Download `AI-Tube_*_x64-setup.exe` below and run the installer.
+
+            **Windows SmartScreen warning**: click **More info → Run anyway** if prompted. This is expected for unsigned builds.
+
+            On first launch the app will download the Qwen3-4B AI model (~3 GB). A YouTube Data API v3 key is required — see the [README](https://github.com/mpszymanski/ai-tube#first-time-setup) for setup instructions.
+          releaseDraft: false
+          prerelease: false
+          args: --bundles nsis
