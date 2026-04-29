@@ -706,3 +706,57 @@ a { color: inherit; text-decoration: none; }
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ─────────────────────────────────────────────────────
+   Hero brand letter-spacing — em so it scales with font
+───────────────────────────────────────────────────── */
+.brand--xl .brand__word--dim { letter-spacing: -0.06em; }
+
+/* ─────────────────────────────────────────────────────
+   ≤ 600px: collapse nav text links, keep GitHub CTA
+───────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .nav__links a:not(.nav__cta) { display: none; }
+  .nav__links { gap: 0; }
+}
+
+/* ─────────────────────────────────────────────────────
+   ≤ 640px: mobile layout
+───────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .section { padding: 60px 0; }
+
+  /* Hero */
+  .hero { padding: 44px 0 32px; }
+  .hero__sub { font-size: 16px; margin-bottom: 28px; }
+  .hero__brand { margin-bottom: 20px; }
+
+  /* Scale down the giant hero logo */
+  .brand--xl { font-size: 68px; gap: 12px; }
+  .brand--xl .brand__mark { width: 112px; height: 86px; border-radius: 22px; }
+
+  /* App preview window */
+  .window { margin-top: 36px; }
+  .window__body { height: 300px; }
+
+  /* Scale in-window brand */
+  .brand--lg { font-size: 34px; gap: 8px; }
+  .brand--lg .brand__mark { width: 56px; height: 44px; border-radius: 12px; }
+
+  /* Tighten in-window layout */
+  .app-topbar { padding: 12px 14px; }
+  .app-hero { gap: 12px; padding: 0 14px; }
+  .app-chips { display: none; }
+  .app-search__field { padding: 12px 12px 12px 40px; font-size: 13px; }
+  .app-search__icon { left: 12px; }
+
+  /* Counter pill */
+  .counter-pill { font-size: 10px; gap: 5px; padding: 4px 8px; }
+}
+
+/* ─────────────────────────────────────────────────────
+   ≤ 480px: footer bottom stacks
+───────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .footer__bottom { flex-direction: column; gap: 6px; align-items: flex-start; }
+}
