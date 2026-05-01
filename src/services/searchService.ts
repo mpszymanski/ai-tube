@@ -37,11 +37,8 @@ export async function runChannelSearch(params: ChannelSearchParams): Promise<Cha
     publishedAfter,
     recordUnits,
   );
-  const titles = allResults.map((r) => r.title);
-  const classified = await classifyClickbait(titles);
-  const clickbaitMap = new Map(classified.map((item) => [item.title, item.clickbait]));
   const latestVideos = allResults
-    .map((r) => ({ ...r, isClickbait: clickbaitMap.get(r.title) ?? false }))
+    .map((r) => ({ ...r, isClickbait: false }))
     .slice(0, 10);
   return { channel, latestVideos };
 }

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ChannelResultWithVideos } from "../../types";
 import ResultCard from "../widgets/ResultCard";
 import Toggle from "../ui/Toggle";
@@ -17,9 +16,7 @@ interface ChannelResultsScreenProps {
 
 export default function ChannelResultsScreen({ data, onSelect, onBack, seenVideoIds }: ChannelResultsScreenProps) {
   const { isLocked } = useWatchLimit();
-  const [filterOn, setFilterOn] = useState(true);
   const { channel, latestVideos } = data;
-  const visibleVideos = filterOn ? latestVideos.filter((r) => !r.isClickbait) : latestVideos;
 
   return (
     <ScreenShell onBack={onBack}>
@@ -72,20 +69,21 @@ export default function ChannelResultsScreen({ data, onSelect, onBack, seenVideo
             <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--text-mute)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
               Latest videos
             </span>
-            <Toggle checked={filterOn} onChange={setFilterOn} label="Clickbait filter" />
+            <Toggle
+              checked={false}
+              onChange={() => {}}
+              label="Clickbait filter"
+              disabled="Clickbait filter is not applied to channels you intentionally browse"
+            />
           </div>
 
           {/* Video list */}
-          {visibleVideos.length === 0 ? (
+          {latestVideos.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 24 }}>
-              <p style={{ fontSize: 14, color: "var(--text-dim)" }}>
-                {latestVideos.length === 0
-                  ? "No recent videos found."
-                  : "All videos were marked as clickbait. Turn off the filter to see them."}
-              </p>
+              <p style={{ fontSize: 14, color: "var(--text-dim)" }}>No recent videos found.</p>
             </div>
           ) : (
-            visibleVideos.map((video, i) => (
+            latestVideos.map((video, i) => (
               <ResultCard
                 key={video.videoId}
                 video={video}

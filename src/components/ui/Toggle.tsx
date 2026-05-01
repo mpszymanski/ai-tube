@@ -2,13 +2,21 @@ interface ToggleProps {
   checked: boolean;
   onChange(checked: boolean): void;
   label?: string;
+  disabled?: string;
 }
 
-export default function Toggle({ checked, onChange, label }: ToggleProps) {
+export default function Toggle({ checked, onChange, label, disabled }: ToggleProps) {
   return (
     <div
-      style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
-      onClick={() => onChange(!checked)}
+      title={disabled}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.45 : 1,
+      }}
+      onClick={() => { if (!disabled) onChange(!checked); }}
     >
       <div
         style={{
