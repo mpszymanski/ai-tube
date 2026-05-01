@@ -2,6 +2,16 @@
 
 All notable changes to AI Tube are documented here.
 
+## [v0.1.1] — 2026-05-01
+
+### Fixes
+
+- Clickbait classification is no longer run on channel feed results, which was unnecessary and wasted model inference time
+- Improved progress feedback during model download and startup — status messages are now logged and surfaced in the banner
+- Updated model status banner copy
+
+---
+
 ## [v0.1.0] — 2026-04-29
 
 ### Features
