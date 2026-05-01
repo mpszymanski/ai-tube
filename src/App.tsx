@@ -7,9 +7,13 @@ import { runChannelSearch } from "./services/searchService";
 import { bootstrapStorage } from "./services";
 import { ensureModelServer } from "./services/modelServer";
 import { checkModelExists, downloadModel, type DownloadProgress } from "./services/modelDownloader";
+import { checkForUpdates } from "./services/version";
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { WatchLimitProvider } from "./context/WatchLimitContext";
 import { log } from "./services/logger";
+import Banner from "./components/ui/Banner";
+import BannerStack from "./components/ui/BannerStack";
 import SetupScreen from "./components/screens/SetupScreen";
 import SearchScreen from "./components/screens/SearchScreen";
 import ResultsList from "./components/screens/ResultsList";
@@ -21,6 +25,7 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [modelStatus, setModelStatus] = useState<ModelStatus>(MODEL_STATUS.CHECKING);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<{ latestVersion: string; releaseUrl: string } | null>(null);
 
   async function runModelPipeline(forceDownload: boolean) {
     const exists = await checkModelExists();
@@ -56,6 +61,7 @@ export default function App() {
         console.error("[boot] model pipeline failed:", e);
         setModelStatus(MODEL_STATUS.ERROR);
       }
+      checkForUpdates().then(info => { if (info) setUpdateInfo(info); });
     })();
   }, []);
 
@@ -169,7 +175,7 @@ export default function App() {
   }
 
   const modelBanner = modelStatus !== MODEL_STATUS.READY && (
-    <div style={{ position: "fixed", bottom: 12, right: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 14px", fontSize: 12, color: modelStatus === MODEL_STATUS.ERROR ? "var(--text-warn, #f59e0b)" : "var(--text-dim)", zIndex: 9999, minWidth: 220 }}>
+    <Banner color={modelStatus === MODEL_STATUS.ERROR ? "var(--text-warn, #f59e0b)" : "var(--text-dim)"}>
       {modelStatus === MODEL_STATUS.ERROR && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span>AI model failed to start</span>
@@ -198,7 +204,29 @@ export default function App() {
           )}
         </div>
       )}
-    </div>
+    </Banner>
+  );
+
+  const updateBanner = updateInfo && (
+    <Banner>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span>v{updateInfo.latestVersion} available</span>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <button
+            onClick={() => openUrl(updateInfo.releaseUrl)}
+            style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}
+          >
+            Download
+          </button>
+          <button
+            onClick={() => setUpdateInfo(null)}
+            style={{ background: "transparent", color: "var(--text-dim)", border: "none", fontSize: 14, cursor: "pointer", padding: "0 4px", lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    </Banner>
   );
 
   if (screen === "setup") {
@@ -211,7 +239,7 @@ export default function App() {
             onBack={wasConfigured ? () => navigate("search") : undefined}
           />
         </div>
-        {modelBanner}
+        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
       </WatchLimitProvider>
     );
   }
@@ -226,7 +254,7 @@ export default function App() {
             onSubscriptions={() => navigate("subscriptions")}
           />
         </div>
-        {modelBanner}
+        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
       </WatchLimitProvider>
     );
   }
@@ -241,7 +269,7 @@ export default function App() {
           onBack={handleBackFromResults}
           seenVideoIds={seenVideoIds}
         />
-        {modelBanner}
+        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
       </WatchLimitProvider>
     );
   }
@@ -256,7 +284,7 @@ export default function App() {
           onBack={handleBackFromResults}
           seenVideoIds={seenVideoIds}
         />
-        {modelBanner}
+        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
       </WatchLimitProvider>
     );
   }
@@ -280,7 +308,7 @@ export default function App() {
           onBack={handleBackFromPlayer}
           onGoToChannel={selectedVideo.channelId ? handleGoToChannelFromPlayer : undefined}
         />
-        {modelBanner}
+        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
       </WatchLimitProvider>
     );
   }
@@ -294,7 +322,7 @@ export default function App() {
             onChannelSelect={handleChannelSelectFromSubscriptions}
           />
         </div>
-        {modelBanner}
+        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
       </WatchLimitProvider>
     );
   }
