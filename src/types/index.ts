@@ -23,6 +23,17 @@ export interface AppConfig {
 
 export type AppScreen = "setup" | "search" | "results" | "channel-results" | "player" | "subscriptions";
 
+export type ResultsScreenState = { kind: "results"; results: VideoResult[]; query: string };
+export type ChannelResultsScreenState = { kind: "channel-results"; data: ChannelResultWithVideos; query: string };
+
+export type ScreenState =
+  | { kind: "setup" }
+  | { kind: "search" }
+  | { kind: "subscriptions" }
+  | ResultsScreenState
+  | ChannelResultsScreenState
+  | { kind: "player"; video: VideoResult; prevState: ResultsScreenState | ChannelResultsScreenState };
+
 export type SearchIntent = "videos" | "channel" | "channel-videos";
 
 export type TimePeriod = "today" | "this_week" | "this_month" | "this_year";

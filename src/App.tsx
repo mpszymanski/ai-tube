@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { AppScreen, VideoResult, ChannelResult, ChannelResultWithVideos, MODEL_STATUS, ModelStatus } from "./types";
+import { VideoResult, ChannelResult, ChannelResultWithVideos, MODEL_STATUS, ModelStatus, ScreenState } from "./types";
 import { isConfigured, getConfig } from "./services/config";
 import { getTodaySeconds, getWeekSeconds, isCacheReady, hydrate as hydrateWatchTime } from "./services/watchTime";
 import { hydrateSeenVideos, persistSeenVideos } from "./services/seenVideos";
@@ -65,26 +65,22 @@ export default function App() {
     })();
   }, []);
 
-  const [screen, setScreen] = useState<AppScreen>("search");
-  const [previousScreen, setPreviousScreen] = useState<AppScreen>("results");
-  const screenRef = useRef<AppScreen>("search");
+  const [screenState, setScreenState] = useState<ScreenState>({ kind: "search" });
+  const screenStateRef = useRef<ScreenState>({ kind: "search" });
 
-  function navigate(to: AppScreen): void {
-    log("user", "navigate", { from: screenRef.current, to });
-    screenRef.current = to;
-    setScreen(to);
+  function navigate(state: ScreenState): void {
+    log("user", "navigate", { from: screenStateRef.current.kind, to: state.kind });
+    screenStateRef.current = state;
+    setScreenState(state);
   }
-  const [results, setResults] = useState<VideoResult[]>([]);
-  const [channelData, setChannelData] = useState<ChannelResultWithVideos | null>(null);
-  const [selectedVideo, setSelectedVideo] = useState<VideoResult | null>(null);
-  const [query, setQuery] = useState("");
+
   const [todaySeconds, setTodaySeconds] = useState(0);
   const [weekSeconds, setWeekSeconds] = useState(0);
   const [seenVideoIds, setSeenVideoIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!ready) return;
-    navigate(isConfigured() ? "search" : "setup");
+    navigate(isConfigured() ? { kind: "search" } : { kind: "setup" });
     setTodaySeconds(getTodaySeconds());
     setWeekSeconds(getWeekSeconds());
     hydrateSeenVideos().then(setSeenVideoIds);
@@ -100,29 +96,23 @@ export default function App() {
   }, []);
 
   function handleSearch(newResults: VideoResult[], searchQuery: string) {
-    setResults(newResults);
-    setQuery(searchQuery);
     log("user", "search_results", { query: searchQuery, count: newResults.length });
-    navigate("results");
+    navigate({ kind: "results", results: newResults, query: searchQuery });
   }
 
   function handleChannelSearch(data: ChannelResultWithVideos, searchQuery: string) {
-    setChannelData(data);
-    setQuery(searchQuery);
     log("user", "channel_results", { query: searchQuery, channelId: data.channel.channelId, count: data.latestVideos.length });
-    navigate("channel-results");
+    navigate({ kind: "channel-results", data, query: searchQuery });
   }
 
   function handleSelect(videoId: string) {
-    const allVideos =
-      screen === "channel-results" && channelData
-        ? channelData.latestVideos
-        : results;
-    const video = allVideos.find((r) => r.videoId === videoId) ?? null;
-    setSelectedVideo(video);
-    setPreviousScreen(screenRef.current);
-    log("user", "video_opened", { videoId, title: video?.title, channelTitle: video?.channelTitle });
-    navigate("player");
+    const s = screenStateRef.current;
+    if (s.kind !== "results" && s.kind !== "channel-results") return;
+    const allVideos = s.kind === "channel-results" ? s.data.latestVideos : s.results;
+    const video = allVideos.find((r) => r.videoId === videoId);
+    if (!video) return;
+    log("user", "video_opened", { videoId, title: video.title, channelTitle: video.channelTitle });
+    navigate({ kind: "player", video, prevState: s });
     setSeenVideoIds((prev) => {
       const next = new Set(prev);
       next.add(videoId);
@@ -131,27 +121,32 @@ export default function App() {
     });
   }
 
-  function handleBackFromResults() {
-    setResults([]);
-    setChannelData(null);
-    setQuery("");
-    navigate("search");
-  }
-
   function handleBackFromPlayer() {
-    navigate(previousScreen);
+    const s = screenStateRef.current;
+    if (s.kind !== "player") return;
+    navigate(s.prevState);
   }
 
   async function handleChannelSelectFromSubscriptions(channel: ChannelResult) {
     const config = getConfig();
     try {
       const result = await runChannelSearch({ channel, apiKey: config.youtubeApiKey });
-      setChannelData(result);
-      setQuery(channel.title);
-      navigate("channel-results");
+      navigate({ kind: "channel-results", data: result, query: channel.title });
     } catch {
       // If fetch fails, stay on subscriptions screen
     }
+  }
+
+  async function handleGoToChannelFromPlayer() {
+    const s = screenStateRef.current;
+    if (s.kind !== "player" || !s.video.channelId) return;
+    const channel: ChannelResult = {
+      channelId: s.video.channelId,
+      title: s.video.channelTitle,
+      thumbnailUrl: s.video.channelThumbnailUrl ?? "",
+      description: "",
+    };
+    await handleChannelSelectFromSubscriptions(channel);
   }
 
   const { dailyLimitSeconds, weeklyLimitSeconds } = getConfig();
@@ -166,7 +161,7 @@ export default function App() {
   }, [isLocked, todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds]);
 
   const shellValue = useMemo(
-    () => ({ todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSettings: () => navigate("setup") }),
+    () => ({ todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSettings: () => navigate({ kind: "setup" }) }),
     [todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked],
   );
 
@@ -229,103 +224,72 @@ export default function App() {
     </Banner>
   );
 
-  if (screen === "setup") {
+  const s = screenState;
+  let content: React.ReactNode = null;
+
+  if (s.kind === "setup") {
     const wasConfigured = isConfigured();
-    return (
-      <WatchLimitProvider value={shellValue}>
-        <div className="app">
-          <SetupScreen
-            onSave={() => navigate("search")}
-            onBack={wasConfigured ? () => navigate("search") : undefined}
-          />
-        </div>
-        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
-      </WatchLimitProvider>
-    );
-  }
-
-  if (screen === "search") {
-    return (
-      <WatchLimitProvider value={shellValue}>
-        <div className="app">
-          <SearchScreen
-            onSearch={handleSearch}
-            onChannelSearch={handleChannelSearch}
-            onSubscriptions={() => navigate("subscriptions")}
-          />
-        </div>
-        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
-      </WatchLimitProvider>
-    );
-  }
-
-  if (screen === "results") {
-    return (
-      <WatchLimitProvider value={shellValue}>
-        <ResultsList
-          results={results}
-          query={query}
-          onSelect={handleSelect}
-          onBack={handleBackFromResults}
-          seenVideoIds={seenVideoIds}
+    content = (
+      <div className="app">
+        <SetupScreen
+          onSave={() => navigate({ kind: "search" })}
+          onBack={wasConfigured ? () => navigate({ kind: "search" }) : undefined}
         />
-        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
-      </WatchLimitProvider>
+      </div>
     );
-  }
-
-  if (screen === "channel-results" && channelData) {
-    return (
-      <WatchLimitProvider value={shellValue}>
-        <ChannelResultsScreen
-          data={channelData}
-          query={query}
-          onSelect={handleSelect}
-          onBack={handleBackFromResults}
-          seenVideoIds={seenVideoIds}
+  } else if (s.kind === "search") {
+    content = (
+      <div className="app">
+        <SearchScreen
+          onSearch={handleSearch}
+          onChannelSearch={handleChannelSearch}
+          onSubscriptions={() => navigate({ kind: "subscriptions" })}
         />
-        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
-      </WatchLimitProvider>
+      </div>
     );
-  }
-
-  async function handleGoToChannelFromPlayer() {
-    if (!selectedVideo?.channelId) return;
-    const channel: ChannelResult = {
-      channelId: selectedVideo.channelId,
-      title: selectedVideo.channelTitle,
-      thumbnailUrl: selectedVideo.channelThumbnailUrl ?? "",
-      description: "",
-    };
-    await handleChannelSelectFromSubscriptions(channel);
-  }
-
-  if (screen === "player" && selectedVideo) {
-    return (
-      <WatchLimitProvider value={shellValue}>
-        <PlayerScreen
-          video={selectedVideo}
-          onBack={handleBackFromPlayer}
-          onGoToChannel={selectedVideo.channelId ? handleGoToChannelFromPlayer : undefined}
+  } else if (s.kind === "results") {
+    content = (
+      <ResultsList
+        results={s.results}
+        query={s.query}
+        onSelect={handleSelect}
+        onBack={() => navigate({ kind: "search" })}
+        seenVideoIds={seenVideoIds}
+      />
+    );
+  } else if (s.kind === "channel-results") {
+    content = (
+      <ChannelResultsScreen
+        data={s.data}
+        query={s.query}
+        onSelect={handleSelect}
+        onBack={() => navigate({ kind: "search" })}
+        seenVideoIds={seenVideoIds}
+      />
+    );
+  } else if (s.kind === "player") {
+    content = (
+      <PlayerScreen
+        video={s.video}
+        onBack={handleBackFromPlayer}
+        onGoToChannel={s.video.channelId ? handleGoToChannelFromPlayer : undefined}
+      />
+    );
+  } else if (s.kind === "subscriptions") {
+    content = (
+      <div className="app">
+        <SubscriptionsScreen
+          onBack={() => navigate({ kind: "search" })}
+          onChannelSelect={handleChannelSelectFromSubscriptions}
         />
-        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
-      </WatchLimitProvider>
+      </div>
     );
   }
 
-  if (screen === "subscriptions") {
-    return (
-      <WatchLimitProvider value={shellValue}>
-        <div className="app">
-          <SubscriptionsScreen
-            onBack={() => navigate("search")}
-            onChannelSelect={handleChannelSelectFromSubscriptions}
-          />
-        </div>
-        {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
-      </WatchLimitProvider>
-    );
-  }
-
-  return null;
+  return (
+    <WatchLimitProvider value={shellValue}>
+      {content}
+      {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
+    </WatchLimitProvider>
+  );
 }
