@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ChannelResult } from "../../types";
 import { getSubscriptions, unsubscribe, subscribeToChanges } from "../../services/subscriptions";
 import ScreenShell from "../layout/ScreenShell";
+import Button from "../ui/Button";
 import { useWatchLimit } from "../../context/WatchLimitContext";
 
 interface SubscriptionsScreenProps {
@@ -85,53 +86,16 @@ export default function SubscriptionsScreen({ onBack, onChannelSelect }: Subscri
                 )}
               </div>
               <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                <button
-                  onClick={() => unsubscribe(ch.channelId)}
-                  style={{
-                    fontSize: 12,
-                    fontFamily: "var(--font-mono)",
-                    padding: "6px 12px",
-                    borderRadius: "var(--radius-sm)",
-                    border: "1px solid var(--border)",
-                    background: "transparent",
-                    color: "var(--text-dim)",
-                    cursor: "pointer",
-                  }}
-                >
-                  Remove
-                </button>
-                <button
+                <Button onClick={() => unsubscribe(ch.channelId)}>Remove</Button>
+                <Button
+                  variant="primary"
+                  loading={loadingChannelId === ch.channelId}
+                  disabled={isLocked || (!!loadingChannelId && loadingChannelId !== ch.channelId)}
                   onClick={() => handleBrowse(ch)}
-                  disabled={!!loadingChannelId || isLocked}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    background: "var(--accent)",
-                    border: "1px solid transparent",
-                    borderRadius: "var(--radius-sm)",
-                    color: "#fff",
-                    fontSize: 12,
-                    fontFamily: "var(--font-mono)",
-                    padding: "6px 14px",
-                    cursor: (loadingChannelId || isLocked) ? "not-allowed" : "pointer",
-                    opacity: isLocked ? 0.4 : (loadingChannelId && loadingChannelId !== ch.channelId ? 0.5 : 1),
-                    transition: "opacity 0.15s",
-                    minWidth: 64,
-                  }}
+                  style={{ minWidth: 64 }}
                 >
-                  {loadingChannelId === ch.channelId ? (
-                    <div style={{
-                      width: 11,
-                      height: 11,
-                      borderRadius: "50%",
-                      border: "2px solid rgba(255,255,255,0.4)",
-                      borderTopColor: "#fff",
-                      animation: "spin 0.7s linear infinite",
-                    }} />
-                  ) : "Browse"}
-                </button>
+                  Browse
+                </Button>
               </div>
             </div>
           ))

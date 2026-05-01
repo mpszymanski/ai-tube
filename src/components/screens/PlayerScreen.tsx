@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { VideoResult } from "../../types";
 import { addSeconds } from "../../services/watchTime";
 import { useYouTubePlayer } from "../../hooks/useYouTubePlayer";
@@ -7,6 +7,7 @@ import ScreenShell from "../layout/ScreenShell";
 import SubscribeButton from "../widgets/SubscribeButton";
 import { formatViewCount, formatPublishedAt } from "../../utils/formatters";
 import { ClipboardIcon, CheckIcon } from "../ui/Icons";
+import Button from "../ui/Button";
 
 interface PlayerScreenProps {
   video: VideoResult;
@@ -16,6 +17,17 @@ interface PlayerScreenProps {
 
 export default function PlayerScreen({ video, onBack, onGoToChannel }: PlayerScreenProps) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [channelLoading, setChannelLoading] = useState(false);
+
+  async function handleGoToChannel() {
+    if (!onGoToChannel || channelLoading) return;
+    setChannelLoading(true);
+    try {
+      await onGoToChannel();
+    } finally {
+      setChannelLoading(false);
+    }
+  }
 
   function clearWatchInterval() {
     if (intervalRef.current) {
@@ -120,30 +132,9 @@ export default function PlayerScreen({ video, onBack, onGoToChannel }: PlayerScr
               {video.channelId && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                   {onGoToChannel && (
-                    <button
-                      onClick={onGoToChannel}
-                      style={{
-                        fontSize: 12,
-                        fontFamily: "var(--font-mono)",
-                        padding: "6px 14px",
-                        borderRadius: "var(--radius-sm)",
-                        border: "1px solid var(--border-strong)",
-                        background: "transparent",
-                        color: "var(--text-dim)",
-                        cursor: "pointer",
-                        transition: "border-color 0.15s, color 0.15s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "var(--text-dim)";
-                        e.currentTarget.style.color = "var(--text)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "var(--border-strong)";
-                        e.currentTarget.style.color = "var(--text-dim)";
-                      }}
-                    >
+                    <Button loading={channelLoading} onClick={handleGoToChannel} style={{ minWidth: 96 }}>
                       Go to channel
-                    </button>
+                    </Button>
                   )}
                   <SubscribeButton
                     channel={{

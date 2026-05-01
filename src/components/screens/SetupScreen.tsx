@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CogIcon } from "../ui/Icons";
+import Button from "../ui/Button";
 import { getConfig, saveConfig } from "../../services/config";
 import { useWatchLimit } from "../../context/WatchLimitContext";
 
@@ -153,46 +154,13 @@ export default function SetupScreen({ onSave, onBack }: SetupScreenProps) {
 
         <div style={{ display: "flex", gap: 8 }}>
           {onBack && (
-            <button
-              onClick={onBack}
-              style={{
-                flex: 1,
-                padding: "11px 20px",
-                background: "transparent",
-                color: "var(--text-dim)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: "pointer",
-                transition: "background 0.15s, color 0.15s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-elev)"; e.currentTarget.style.color = "var(--text)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-dim)"; }}
-            >
+            <Button variant="secondary" size="md" onClick={onBack} style={{ flex: 1 }}>
               Cancel
-            </button>
+            </Button>
           )}
-          <button
-            onClick={handleSave}
-            disabled={!canSave}
-            style={{
-              flex: 1,
-              padding: "11px 20px",
-              background: canSave ? "var(--accent)" : "var(--border-strong)",
-              color: canSave ? "#fff" : "var(--text-mute)",
-              border: "none",
-              borderRadius: "var(--radius)",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: canSave ? "pointer" : "not-allowed",
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => { if (canSave) e.currentTarget.style.background = "var(--accent-dim)"; }}
-            onMouseLeave={(e) => { if (canSave) e.currentTarget.style.background = "var(--accent)"; }}
-          >
+          <Button variant="primary" size="md" disabled={!canSave} onClick={handleSave} style={{ flex: 1 }}>
             Save &amp; Continue
-          </button>
+          </Button>
         </div>
       </div>
     </div>

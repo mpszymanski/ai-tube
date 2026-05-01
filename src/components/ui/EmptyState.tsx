@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import Button from "./Button";
 
 function EmptyBoxIcon() {
   return (
@@ -43,21 +44,7 @@ export default function EmptyState({ title, subtitle, actionLabel, onAction, ico
         <p style={{ fontSize: 13.5, color: "var(--text-dim)", textAlign: "center" }}>{subtitle}</p>
       )}
       {actionLabel && onAction && (
-        <button
-          onClick={onAction}
-          style={{
-            marginTop: 4,
-            padding: "8px 16px",
-            background: "transparent",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            color: "var(--text-dim)",
-            fontSize: 13,
-            cursor: "pointer",
-          }}
-        >
-          {actionLabel}
-        </button>
+        <Button onClick={onAction} style={{ marginTop: 4 }}>{actionLabel}</Button>
       )}
     </div>
   );
