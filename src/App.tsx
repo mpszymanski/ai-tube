@@ -1,12 +1,28 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { VideoResult, ChannelResult, ChannelResultWithVideos, MODEL_STATUS, ModelStatus, ScreenState } from "./types";
+import {
+  VideoResult,
+  ChannelResult,
+  ChannelResultWithVideos,
+  MODEL_STATUS,
+  ModelStatus,
+  ScreenState,
+} from "./types";
 import { isConfigured, getConfig } from "./services/config";
-import { getTodaySeconds, getWeekSeconds, isCacheReady, hydrate as hydrateWatchTime } from "./services/watchTime";
+import {
+  getTodaySeconds,
+  getWeekSeconds,
+  isCacheReady,
+  hydrate as hydrateWatchTime,
+} from "./services/watchTime";
 import { hydrateSeenVideos, persistSeenVideos } from "./services/seenVideos";
 import { runChannelSearch } from "./services/searchService";
 import { bootstrapStorage } from "./services";
 import { ensureModelServer } from "./services/modelServer";
-import { checkModelExists, downloadModel, type DownloadProgress } from "./services/modelDownloader";
+import {
+  checkModelExists,
+  downloadModel,
+  type DownloadProgress,
+} from "./services/modelDownloader";
 import { checkForUpdates } from "./services/version";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -20,12 +36,19 @@ import ResultsList from "./components/screens/ResultsList";
 import PlayerScreen from "./components/screens/PlayerScreen";
 import ChannelResultsScreen from "./components/screens/ChannelResultsScreen";
 import SubscriptionsScreen from "./components/screens/SubscriptionsScreen";
+import Button from "./components/ui/Button";
 
 export default function App() {
   const [ready, setReady] = useState(false);
-  const [modelStatus, setModelStatus] = useState<ModelStatus>(MODEL_STATUS.CHECKING);
-  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
-  const [updateInfo, setUpdateInfo] = useState<{ latestVersion: string; releaseUrl: string } | null>(null);
+  const [modelStatus, setModelStatus] = useState<ModelStatus>(
+    MODEL_STATUS.CHECKING,
+  );
+  const [downloadProgress, setDownloadProgress] =
+    useState<DownloadProgress | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<{
+    latestVersion: string;
+    releaseUrl: string;
+  } | null>(null);
 
   async function runModelPipeline(forceDownload: boolean) {
     const exists = await checkModelExists();
@@ -39,7 +62,9 @@ export default function App() {
   }
 
   async function retryModelDownload() {
-    try { await invoke("stop_model_server"); } catch {}
+    try {
+      await invoke("stop_model_server");
+    } catch {}
     setDownloadProgress(null);
     try {
       await runModelPipeline(true);
@@ -61,15 +86,22 @@ export default function App() {
         console.error("[boot] model pipeline failed:", e);
         setModelStatus(MODEL_STATUS.ERROR);
       }
-      checkForUpdates().then(info => { if (info) setUpdateInfo(info); });
+      checkForUpdates().then((info) => {
+        if (info) setUpdateInfo(info);
+      });
     })();
   }, []);
 
-  const [screenState, setScreenState] = useState<ScreenState>({ kind: "search" });
+  const [screenState, setScreenState] = useState<ScreenState>({
+    kind: "search",
+  });
   const screenStateRef = useRef<ScreenState>({ kind: "search" });
 
   function navigate(state: ScreenState): void {
-    log("user", "navigate", { from: screenStateRef.current.kind, to: state.kind });
+    log("user", "navigate", {
+      from: screenStateRef.current.kind,
+      to: state.kind,
+    });
     screenStateRef.current = state;
     setScreenState(state);
   }
@@ -96,22 +128,37 @@ export default function App() {
   }, []);
 
   function handleSearch(newResults: VideoResult[], searchQuery: string) {
-    log("user", "search_results", { query: searchQuery, count: newResults.length });
+    log("user", "search_results", {
+      query: searchQuery,
+      count: newResults.length,
+    });
     navigate({ kind: "results", results: newResults, query: searchQuery });
   }
 
-  function handleChannelSearch(data: ChannelResultWithVideos, searchQuery: string) {
-    log("user", "channel_results", { query: searchQuery, channelId: data.channel.channelId, count: data.latestVideos.length });
+  function handleChannelSearch(
+    data: ChannelResultWithVideos,
+    searchQuery: string,
+  ) {
+    log("user", "channel_results", {
+      query: searchQuery,
+      channelId: data.channel.channelId,
+      count: data.latestVideos.length,
+    });
     navigate({ kind: "channel-results", data, query: searchQuery });
   }
 
   function handleSelect(videoId: string) {
     const s = screenStateRef.current;
     if (s.kind !== "results" && s.kind !== "channel-results") return;
-    const allVideos = s.kind === "channel-results" ? s.data.latestVideos : s.results;
+    const allVideos =
+      s.kind === "channel-results" ? s.data.latestVideos : s.results;
     const video = allVideos.find((r) => r.videoId === videoId);
     if (!video) return;
-    log("user", "video_opened", { videoId, title: video.title, channelTitle: video.channelTitle });
+    log("user", "video_opened", {
+      videoId,
+      title: video.title,
+      channelTitle: video.channelTitle,
+    });
     navigate({ kind: "player", video, prevState: s });
     setSeenVideoIds((prev) => {
       const next = new Set(prev);
@@ -130,7 +177,10 @@ export default function App() {
   async function handleChannelSelectFromSubscriptions(channel: ChannelResult) {
     const config = getConfig();
     try {
-      const result = await runChannelSearch({ channel, apiKey: config.youtubeApiKey });
+      const result = await runChannelSearch({
+        channel,
+        apiKey: config.youtubeApiKey,
+      });
       navigate({ kind: "channel-results", data: result, query: channel.title });
     } catch {
       // If fetch fails, stay on subscriptions screen
@@ -150,33 +200,75 @@ export default function App() {
   }
 
   const { dailyLimitSeconds, weeklyLimitSeconds } = getConfig();
-  const isLocked = todaySeconds >= dailyLimitSeconds || weekSeconds >= weeklyLimitSeconds;
+  const isLocked =
+    todaySeconds >= dailyLimitSeconds || weekSeconds >= weeklyLimitSeconds;
 
   const wasLockedRef = useRef(false);
   useEffect(() => {
     if (isLocked && !wasLockedRef.current) {
-      log("time", "watch_limit_reached", { todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds });
+      log("time", "watch_limit_reached", {
+        todaySeconds,
+        weekSeconds,
+        dailyLimitSeconds,
+        weeklyLimitSeconds,
+      });
     }
     wasLockedRef.current = isLocked;
-  }, [isLocked, todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds]);
+  }, [
+    isLocked,
+    todaySeconds,
+    weekSeconds,
+    dailyLimitSeconds,
+    weeklyLimitSeconds,
+  ]);
 
   const shellValue = useMemo(
-    () => ({ todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSettings: () => navigate({ kind: "setup" }) }),
-    [todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked],
+    () => ({
+      todaySeconds,
+      weekSeconds,
+      dailyLimitSeconds,
+      weeklyLimitSeconds,
+      isLocked,
+      onSettings: () => navigate({ kind: "setup" }),
+    }),
+    [
+      todaySeconds,
+      weekSeconds,
+      dailyLimitSeconds,
+      weeklyLimitSeconds,
+      isLocked,
+    ],
   );
 
   if (!ready) {
-    return <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }} />;
+    return (
+      <div style={{ background: "var(--bg-primary)", minHeight: "100vh" }} />
+    );
   }
 
   const modelBanner = modelStatus !== MODEL_STATUS.READY && (
-    <Banner color={modelStatus === MODEL_STATUS.ERROR ? "var(--text-warn, #f59e0b)" : "var(--text-dim)"}>
+    <Banner
+      color={
+        modelStatus === MODEL_STATUS.ERROR
+          ? "var(--text-warn, #f59e0b)"
+          : "var(--text-dim)"
+      }
+    >
       {modelStatus === MODEL_STATUS.ERROR && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span>AI model failed to start</span>
           <button
             onClick={retryModelDownload}
-            style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer", alignSelf: "flex-start" }}
+            style={{
+              background: "var(--accent)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+              padding: "4px 10px",
+              fontSize: 11,
+              cursor: "pointer",
+              alignSelf: "flex-start",
+            }}
           >
             Re-download model
           </button>
@@ -189,11 +281,26 @@ export default function App() {
           <span>Downloading AI model…</span>
           {downloadProgress && (
             <>
-              <div style={{ background: "var(--border)", borderRadius: 3, height: 4, overflow: "hidden" }}>
-                <div style={{ background: "var(--accent)", height: "100%", width: `${Math.round((downloadProgress.downloaded / downloadProgress.total) * 100)}%`, transition: "width 0.3s" }} />
+              <div
+                style={{
+                  background: "var(--border)",
+                  borderRadius: 3,
+                  height: 4,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    background: "var(--accent)",
+                    height: "100%",
+                    width: `${Math.round((downloadProgress.downloaded / downloadProgress.total) * 100)}%`,
+                    transition: "width 0.3s",
+                  }}
+                />
               </div>
               <span style={{ fontSize: 11 }}>
-                {(downloadProgress.downloaded / 1e9).toFixed(2)} / {(downloadProgress.total / 1e9).toFixed(2)} GB
+                {(downloadProgress.downloaded / 1e9).toFixed(2)} /{" "}
+                {(downloadProgress.total / 1e9).toFixed(2)} GB
               </span>
             </>
           )}
@@ -204,21 +311,20 @@ export default function App() {
 
   const updateBanner = updateInfo && (
     <Banner>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span>v{updateInfo.latestVersion} available</span>
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <button
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <span>
+          <span style={{ color: "#fff" }}>v{updateInfo.latestVersion}</span> is
+          now available!
+        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Button
+            style={{ flex: 1 }}
+            variant="primary"
             onClick={() => openUrl(updateInfo.releaseUrl)}
-            style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}
           >
             Download
-          </button>
-          <button
-            onClick={() => setUpdateInfo(null)}
-            style={{ background: "transparent", color: "var(--text-dim)", border: "none", fontSize: 14, cursor: "pointer", padding: "0 4px", lineHeight: 1 }}
-          >
-            ×
-          </button>
+          </Button>
+          <Button onClick={() => setUpdateInfo(null)}>Skip</Button>
         </div>
       </div>
     </Banner>
@@ -233,7 +339,9 @@ export default function App() {
       <div className="app">
         <SetupScreen
           onSave={() => navigate({ kind: "search" })}
-          onBack={wasConfigured ? () => navigate({ kind: "search" }) : undefined}
+          onBack={
+            wasConfigured ? () => navigate({ kind: "search" }) : undefined
+          }
         />
       </div>
     );
@@ -272,7 +380,9 @@ export default function App() {
       <PlayerScreen
         video={s.video}
         onBack={handleBackFromPlayer}
-        onGoToChannel={s.video.channelId ? handleGoToChannelFromPlayer : undefined}
+        onGoToChannel={
+          s.video.channelId ? handleGoToChannelFromPlayer : undefined
+        }
       />
     );
   } else if (s.kind === "subscriptions") {
@@ -289,7 +399,12 @@ export default function App() {
   return (
     <WatchLimitProvider value={shellValue}>
       {content}
-      {(modelBanner || updateBanner) && <BannerStack>{modelBanner}{updateBanner}</BannerStack>}
+      {(modelBanner || updateBanner) && (
+        <BannerStack>
+          {modelBanner}
+          {updateBanner}
+        </BannerStack>
+      )}
     </WatchLimitProvider>
   );
 }
