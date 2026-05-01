@@ -2,6 +2,14 @@
 
 All notable changes to AI Tube are documented here.
 
+## [v0.1.2] — 2026-05-01
+
+### Fixes
+
+- Polished the model download progress banner styling
+
+---
+
 ## [v0.1.1] — 2026-05-01
 
 ### Fixes

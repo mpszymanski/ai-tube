@@ -1,6 +1,6 @@
 [package]
 name = "tauri-app"
-version = "0.1.1"
+version = "0.1.2"
 description = "AI Tube — privacy-first YouTube browsing with local AI"
 authors = ["Michał Szymański"]
 edition = "2021"
