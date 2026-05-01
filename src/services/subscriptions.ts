@@ -2,6 +2,7 @@ import type { ChannelResult } from "../types";
 import type { StorageAdapter } from "./storage/adapter";
 import { KEYS } from "./storage/adapter";
 import { getAdapter } from "./storage";
+import { log } from "./logger";
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -41,10 +42,12 @@ function save(channels: ChannelResult[]): void {
 export function subscribe(channel: ChannelResult): void {
   if (isSubscribed(channel.channelId)) return;
   save([...getSubscriptions(), channel]);
+  log("user", "subscribe", { channelId: channel.channelId, title: channel.title });
 }
 
 export function unsubscribe(channelId: string): void {
   save(getSubscriptions().filter((ch) => ch.channelId !== channelId));
+  log("user", "unsubscribe", { channelId });
 }
 
 export function subscribeToChanges(fn: Listener): () => void {

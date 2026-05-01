@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { AppScreen, VideoResult, ChannelResult, ChannelResultWithVideos, MODEL_STATUS, ModelStatus } from "./types";
 import { isConfigured, getConfig } from "./services/config";
 import { getTodaySeconds, getWeekSeconds, isCacheReady, hydrate as hydrateWatchTime } from "./services/watchTime";
@@ -9,6 +9,7 @@ import { ensureModelServer } from "./services/modelServer";
 import { checkModelExists, downloadModel, type DownloadProgress } from "./services/modelDownloader";
 import { invoke } from "@tauri-apps/api/core";
 import { WatchLimitProvider } from "./context/WatchLimitContext";
+import { log } from "./services/logger";
 import SetupScreen from "./components/screens/SetupScreen";
 import SearchScreen from "./components/screens/SearchScreen";
 import ResultsList from "./components/screens/ResultsList";
@@ -60,6 +61,13 @@ export default function App() {
 
   const [screen, setScreen] = useState<AppScreen>("search");
   const [previousScreen, setPreviousScreen] = useState<AppScreen>("results");
+  const screenRef = useRef<AppScreen>("search");
+
+  function navigate(to: AppScreen): void {
+    log("user", "navigate", { from: screenRef.current, to });
+    screenRef.current = to;
+    setScreen(to);
+  }
   const [results, setResults] = useState<VideoResult[]>([]);
   const [channelData, setChannelData] = useState<ChannelResultWithVideos | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoResult | null>(null);
@@ -70,7 +78,7 @@ export default function App() {
 
   useEffect(() => {
     if (!ready) return;
-    setScreen(isConfigured() ? "search" : "setup");
+    navigate(isConfigured() ? "search" : "setup");
     setTodaySeconds(getTodaySeconds());
     setWeekSeconds(getWeekSeconds());
     hydrateSeenVideos().then(setSeenVideoIds);
@@ -88,13 +96,15 @@ export default function App() {
   function handleSearch(newResults: VideoResult[], searchQuery: string) {
     setResults(newResults);
     setQuery(searchQuery);
-    setScreen("results");
+    log("user", "search_results", { query: searchQuery, count: newResults.length });
+    navigate("results");
   }
 
   function handleChannelSearch(data: ChannelResultWithVideos, searchQuery: string) {
     setChannelData(data);
     setQuery(searchQuery);
-    setScreen("channel-results");
+    log("user", "channel_results", { query: searchQuery, channelId: data.channel.channelId, count: data.latestVideos.length });
+    navigate("channel-results");
   }
 
   function handleSelect(videoId: string) {
@@ -104,8 +114,9 @@ export default function App() {
         : results;
     const video = allVideos.find((r) => r.videoId === videoId) ?? null;
     setSelectedVideo(video);
-    setPreviousScreen(screen);
-    setScreen("player");
+    setPreviousScreen(screenRef.current);
+    log("user", "video_opened", { videoId, title: video?.title, channelTitle: video?.channelTitle });
+    navigate("player");
     setSeenVideoIds((prev) => {
       const next = new Set(prev);
       next.add(videoId);
@@ -118,11 +129,11 @@ export default function App() {
     setResults([]);
     setChannelData(null);
     setQuery("");
-    setScreen("search");
+    navigate("search");
   }
 
   function handleBackFromPlayer() {
-    setScreen(previousScreen);
+    navigate(previousScreen);
   }
 
   async function handleChannelSelectFromSubscriptions(channel: ChannelResult) {
@@ -131,7 +142,7 @@ export default function App() {
       const result = await runChannelSearch({ channel, apiKey: config.youtubeApiKey });
       setChannelData(result);
       setQuery(channel.title);
-      setScreen("channel-results");
+      navigate("channel-results");
     } catch {
       // If fetch fails, stay on subscriptions screen
     }
@@ -140,8 +151,16 @@ export default function App() {
   const { dailyLimitSeconds, weeklyLimitSeconds } = getConfig();
   const isLocked = todaySeconds >= dailyLimitSeconds || weekSeconds >= weeklyLimitSeconds;
 
+  const wasLockedRef = useRef(false);
+  useEffect(() => {
+    if (isLocked && !wasLockedRef.current) {
+      log("time", "watch_limit_reached", { todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds });
+    }
+    wasLockedRef.current = isLocked;
+  }, [isLocked, todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds]);
+
   const shellValue = useMemo(
-    () => ({ todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSettings: () => setScreen("setup") }),
+    () => ({ todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked, onSettings: () => navigate("setup") }),
     [todaySeconds, weekSeconds, dailyLimitSeconds, weeklyLimitSeconds, isLocked],
   );
 
@@ -188,8 +207,8 @@ export default function App() {
       <WatchLimitProvider value={shellValue}>
         <div className="app">
           <SetupScreen
-            onSave={() => setScreen("search")}
-            onBack={wasConfigured ? () => setScreen("search") : undefined}
+            onSave={() => navigate("search")}
+            onBack={wasConfigured ? () => navigate("search") : undefined}
           />
         </div>
         {modelBanner}
@@ -204,7 +223,7 @@ export default function App() {
           <SearchScreen
             onSearch={handleSearch}
             onChannelSearch={handleChannelSearch}
-            onSubscriptions={() => setScreen("subscriptions")}
+            onSubscriptions={() => navigate("subscriptions")}
           />
         </div>
         {modelBanner}
@@ -271,7 +290,7 @@ export default function App() {
       <WatchLimitProvider value={shellValue}>
         <div className="app">
           <SubscriptionsScreen
-            onBack={() => setScreen("search")}
+            onBack={() => navigate("search")}
             onChannelSelect={handleChannelSelectFromSubscriptions}
           />
         </div>

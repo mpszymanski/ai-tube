@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { VideoResult } from "../../types";
 import { addSeconds } from "../../services/watchTime";
+import { log } from "../../services/logger";
 import { useYouTubePlayer } from "../../hooks/useYouTubePlayer";
 import { useCopyLink } from "../../hooks/useCopyLink";
 import ScreenShell from "../layout/ScreenShell";
@@ -17,6 +18,7 @@ interface PlayerScreenProps {
 
 export default function PlayerScreen({ video, onBack, onGoToChannel }: PlayerScreenProps) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sessionSecondsRef = useRef(0);
   const [channelLoading, setChannelLoading] = useState(false);
 
   async function handleGoToChannel() {
@@ -36,10 +38,21 @@ export default function PlayerScreen({ video, onBack, onGoToChannel }: PlayerScr
     }
   }
 
+  function handleBack() {
+    clearWatchInterval();
+    if (sessionSecondsRef.current > 0) {
+      log("time", "watch_session", { videoId: video.videoId, title: video.title, seconds: sessionSecondsRef.current });
+    }
+    onBack();
+  }
+
   const playerDivRef = useYouTubePlayer(video.videoId, {
     onPlaying: () => {
       clearWatchInterval();
-      intervalRef.current = setInterval(() => addSeconds(1), 1000);
+      intervalRef.current = setInterval(() => {
+        addSeconds(1);
+        sessionSecondsRef.current += 1;
+      }, 1000);
     },
     onPaused: () => clearWatchInterval(),
   });
@@ -49,7 +62,7 @@ export default function PlayerScreen({ video, onBack, onGoToChannel }: PlayerScr
   const metaParts = [formatViewCount(video.viewCount), formatPublishedAt(video.publishedAt)].filter(Boolean);
 
   return (
-    <ScreenShell onBack={onBack}>
+    <ScreenShell onBack={handleBack}>
       <div style={{ width: "100%", maxWidth: 760, display: "flex", flexDirection: "column", gap: 16 }}>
           <div
             style={{

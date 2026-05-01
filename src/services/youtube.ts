@@ -1,4 +1,5 @@
 import { VideoResult, ChannelResult } from "../types";
+import { log } from "./logger";
 
 function decodeHtmlEntities(text: string): string {
   return text
@@ -127,7 +128,7 @@ export async function searchChannels(
   onQuotaUsed?.(100);
 
   const data = await res.json();
-  return (data.items ?? []).map(
+  const channels = (data.items ?? []).map(
     (item: any): ChannelResult => ({
       channelId: item.id.channelId,
       title: item.snippet.title,
@@ -140,6 +141,8 @@ export async function searchChannels(
       ).replace(/^\/\//, "https://"),
     }),
   );
+  log("fetch", "youtube_channels", { name, count: channels.length });
+  return channels;
 }
 
 export async function getChannelLatestVideos(
@@ -165,7 +168,7 @@ export async function getChannelLatestVideos(
   const details =
     videoIds.length > 0 ? await fetchVideoDetails(videoIds, apiKey, onQuotaUsed) : new Map();
 
-  return items
+  const videos = items
     .map((item: any): VideoResult => {
       const id = item.id.videoId;
       const d = details.get(id);
@@ -182,6 +185,8 @@ export async function getChannelLatestVideos(
       };
     })
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  log("fetch", "youtube_channel_videos", { channelId, count: videos.length });
+  return videos;
 }
 
 export async function searchYouTube(
@@ -216,7 +221,7 @@ export async function searchYouTube(
   ];
   const channelThumbs = await fetchChannelThumbnails(uniqueChannelIds, apiKey, onQuotaUsed);
 
-  return items
+  const videos = items
     .map((item: any): VideoResult => {
       const id = item.id.videoId;
       const d = details.get(id);
@@ -236,4 +241,6 @@ export async function searchYouTube(
       };
     })
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  log("fetch", "youtube_search", { query, channelId, count: videos.length });
+  return videos;
 }
