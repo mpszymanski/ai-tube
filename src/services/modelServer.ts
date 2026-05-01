@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { log } from "./logger";
 
 const HEALTH_URL = "http://localhost:11434/health";
 const POLL_INTERVAL_MS = 500;
@@ -19,6 +20,7 @@ export async function ensureModelServer(): Promise<void> {
 
   if (await isReady()) {
     console.log("[modelServer] already running, skipping spawn");
+    log("model", "server_already_running", {});
     return;
   }
 
@@ -28,12 +30,15 @@ export async function ensureModelServer(): Promise<void> {
   });
 
   console.log("[modelServer] not running, invoking start_model_server...");
+  log("model", "server_start", {});
+  const t0 = Date.now();
   try {
     await invoke("start_model_server");
     console.log("[modelServer] sidecar spawned, waiting for ready...");
   } catch (e) {
     unlisten();
     console.error("[modelServer] start_model_server invoke failed:", e);
+    log("model", "server_error", { error: String(e) });
     throw e;
   }
 
@@ -43,10 +48,12 @@ export async function ensureModelServer(): Promise<void> {
     if (await isReady()) {
       unlisten();
       console.log("[modelServer] ready");
+      log("model", "server_ready", { ms: Date.now() - t0 });
       return;
     }
   }
 
   unlisten();
+  log("model", "server_timeout", { ms: Date.now() - t0 });
   throw new Error("llama-server did not become ready within 60 s");
 }
